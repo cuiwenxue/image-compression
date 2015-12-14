@@ -1,6 +1,9 @@
 # Compiled code
 *.pyc
 
+# Saved neural network
+*.zdp
+
 # Temporary files
 *~
 
