@@ -1,0 +1,8 @@
+# Compiled code
+*.pyc
+
+# Temporary files
+*~
+
+# Hidden files
+.*
