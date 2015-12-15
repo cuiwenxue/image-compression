@@ -1,3 +1,7 @@
+"""In this module you can find implementation of neural network.
+   NeuralNetwork allows to create network with input and output layer and 0 or more hidden layers.
+   All layer must contain at least single neuron.
+"""
 import math
 import random
 import pickle
@@ -40,7 +44,7 @@ class NeuralNetwork(object):
             self._init_edges(hidden_layer)
 
     def init_weights(self):
-        """Inicialize
+        """Initialize all network edges with random values from <-1; 1>
         """
         for neuron in self.input_layer:
             for edge in neuron.outgoing_edges:
@@ -65,6 +69,9 @@ class NeuralNetwork(object):
         return [neuron.value for neuron in self.output_layer]
 
     def teach_step(self, input, target):
+        """Calculate network output. Compare it with target and calculate errors.
+           Propagate errors to predecessing layers and adjusts edges weights.
+        """
         if len(input) != len(self.input_layer):
             raise NeuralNetworkException('Improper input size')
         if len(target) != len(self.output_layer):
@@ -74,6 +81,8 @@ class NeuralNetwork(object):
         self._propagate_error(target)
 
     def _init_edges(self, layer):
+        """Creates all possible connection between neurons in network
+        """
         for neuron_begin in layer:
             for neuron_end in self._get_layer_successor(layer):
                 edge = Edge(neuron_begin, neuron_end)
