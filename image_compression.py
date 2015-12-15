@@ -1,16 +1,23 @@
 import argparse
 import logging
+import sys
 
 import neural_network
 
 
 def teach(repeat, learning_rate, neural_network_path):
-    logging.getLogger('logger').info('Running program in teaching mode.')
+    logging.getLogger('logger').info('Running program in teaching mode')
     network = neural_network.NeuralNetwork(64, [16], 64, learning_rate=learning_rate)
     network.init_weights()
-    logging.getLogger('logger').info('Neural network edges initialized.')
+    logging.getLogger('logger').info('Neural network edges initialized')
 
-    # TODO teaching algorithm implementation
+    sys.stdout.write('Teaching in progress    ')
+    for i in xrange(repeat):
+        sys.stdout.write('\b\b\b')
+        # TODO teaching algorithm implementation
+        sys.stdout.write("%d%%" % (100 * (i + 1) / repeat))
+        sys.stdout.flush()
+    sys.stdout.write('\n')
 
     logging.getLogger('logger').info('Teaching completed')
     neural_network.save(network, neural_network_path)
@@ -18,23 +25,23 @@ def teach(repeat, learning_rate, neural_network_path):
 
 
 def compress(image_path, neural_network_path):
-    logging.getLogger('logger').info('Running program in compression mode.')
+    logging.getLogger('logger').info('Running program in compression mode')
     try:
         network = neural_network.load(neural_network_path)
     except neural_network.NeuralNetworkException as exc:
         logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
         exit(-1)
-    # TODO compression algorithm
+        # TODO compression algorithm
 
 
 def decompress(image_path, neural_network_path):
-    logging.getLogger('logger').info('Running program in decompression mode.')
+    logging.getLogger('logger').info('Running program in decompression mode')
     try:
         network = neural_network.load(neural_network_path)
     except neural_network.NeuralNetworkException as exc:
         logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
         exit(-1)
-    # TODO decompression algorithm
+        # TODO decompression algorithm
 
 
 def main():
@@ -70,7 +77,7 @@ def format_logger(debug=False):
     logger.addHandler(console_handler)
     if debug:
         logger.setLevel(logging.DEBUG)
-        logging.getLogger('logger').info('Running program in debug mode.')
+        logging.getLogger('logger').info('Running program in debug mode')
     else:
         logger.setLevel(logging.INFO)
 
