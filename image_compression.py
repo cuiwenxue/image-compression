@@ -1,6 +1,9 @@
 import argparse
 import logging
 import sys
+import random
+import compression
+import pickle
 
 import neural_network
 
@@ -15,9 +18,16 @@ def teach(repeat, learning_rate, neural_network_path):
     for i in xrange(repeat):
         sys.stdout.write('\b\b\b')
         # TODO teaching algorithm implementation
+        data = compression.getRandomSquare(compression.openImage('59.bmp'))
+        network.teach_step(data, data)
         sys.stdout.write("%d%%" % (100 * (i + 1) / repeat))
         sys.stdout.flush()
-    sys.stdout.write('\n')
+        sys.stdout.write('\n')
+
+    print "\n\tTEST RUN\n"
+    data = compression.getRandomSquare(compression.openImage('59.bmp'))
+    print data
+    print (network.run(data))
 
     logging.getLogger('logger').info('Teaching completed')
     neural_network.save(network, neural_network_path)
@@ -31,7 +41,18 @@ def compress(image_path, neural_network_path):
     except neural_network.NeuralNetworkException as exc:
         logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
         exit(-1)
-        # TODO compression algorithm
+    # TODO compression algorithm
+    img = compression.openImage(image_path)
+    squares = compression.getSequenceSquares(img)
+    ret = []
+    hidden = []
+    hidden.append(img.size)
+    print squares[0]
+    for sq in squares:
+        ret.append(network.run(sq))
+        hidden.append(compression.quantify(network.hidden_layers[0], 8))
+    compression.printPicture(img, ret, 'afterRun.bmp')
+    pickle.dump(hidden, open('cmpIMG' + '.zdp', 'wb'), pickle.HIGHEST_PROTOCOL)
 
 
 def decompress(image_path, neural_network_path):
@@ -42,6 +63,12 @@ def decompress(image_path, neural_network_path):
         logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
         exit(-1)
         # TODO decompression algorithm
+    img = compression.openImage(image_path)
+    try:
+        hidden = pickle.load(open('cmpIMG.zdp', 'rb'))
+    except:
+        logging.getLogger('logger').critical('Cannot load compressed archive: ' + exc.message)
+
 
 
 def main():
@@ -49,7 +76,7 @@ def main():
     format_logger(args.debug)
     if args.teach:
         # TODO get those parameters from argparse
-        teach(10, 0.5, args.neural_network)
+        teach(100000, 0.5, args.neural_network)
     elif args.compress:
         compress(args.compress, args.neural_network)
     else:

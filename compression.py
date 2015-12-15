@@ -104,7 +104,7 @@ def getSequenceSquares(img):
 
 
 
-def printPicture(img, squares):
+def printPicture(img, squares, name):
     '''
     Print squares sequence into img
     '''
@@ -114,8 +114,7 @@ def printPicture(img, squares):
     y = img.size[1]
     for i in xrange(0, x, 8):
         for j in xrange(0, y, 8):
-                putSquare(img, i, j, squares[idx], "newmap")
+                putSquare(img, i, j, squares[idx], name)
                 idx = idx + 1
 
 
-printPicture(openImage('empty.bmp'), getSequenceSquares(openImage("110.bmp")))
