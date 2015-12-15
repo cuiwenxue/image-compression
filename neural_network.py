@@ -40,6 +40,8 @@ class NeuralNetwork(object):
             self._init_edges(hidden_layer)
 
     def init_weights(self):
+        """Inicialize
+        """
         for neuron in self.input_layer:
             for edge in neuron.outgoing_edges:
                 edge.weight = random.uniform(-1, 1)
@@ -57,11 +59,9 @@ class NeuralNetwork(object):
             neuron.value = input[i]
 
         for hidden_layer in self.hidden_layers:
-            for neuron in hidden_layer:
-                neuron.update_value()
+            hidden_layer.update_values()
+        self.output_layer.update_values()
 
-        for neuron in self.output_layer:
-            neuron.update_value()
         return [neuron.value for neuron in self.output_layer]
 
     def teach_step(self, input, target):
@@ -121,6 +121,10 @@ class Layer(object):
 
     def __len__(self):
         return len(self.neurons)
+
+    def update_values(self):
+        for neuron in self.neurons:
+            neuron.update_value()
 
 
 class Edge(object):
