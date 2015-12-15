@@ -30,23 +30,36 @@ class NeuralNetwork(object):
        Teaching algorithm uses error backpropagation.
     """
 
-    def __init__(self, input_layer_size=64, hidden_layer_size=16, output_layer_size=64, learning_rate=0.5):
+    def __init__(self, input_layer_size, hidden_layers_sizes, output_layer_size, learning_rate=0.5):
         self.learning_rate = learning_rate
-        self.input_layer = [Node() for i in range(input_layer_size)]
-        self.v_edges = [[0 for i in range(hidden_layer_size)] for i in range(input_layer_size)]
-        self.hidden_layer = [Node() for i in range(hidden_layer_size)]
-        self.w_edges = [[0 for i in range(output_layer_size)] for i in range(hidden_layer_size)]
-        self.output_layer = [Node() for i in range(output_layer_size)]
+        self.input_layer = Layer(input_layer_size)
+        self.hidden_layers = [Layer(hidden_layers_sizes[i]) for i in range(len(hidden_layers_sizes))]
+        self.output_layer = Layer(output_layer_size)
+        self._init_edges(self.input_layer)
+        for hidden_layer in self.hidden_layers:
+            self._init_edges(hidden_layer)
 
-    def get_output(self, input):
+    def init_weights(self):
+        for neuron in self.input_layer:
+            for edge in neuron.outgoing_edges:
+                edge.weight = random.uniform(-1, 1)
+
+        for hidden_layer in self.hidden_layers:
+            for neuron in hidden_layer:
+                for edge in neuron.outgoing_edges:
+                    edge.weight = random.uniform(-1, 1)
+
+    def run(self, input):
         if len(input) != len(self.input_layer):
             raise NeuralNetworkException('Improper input size')
 
-        for i in range(len(self.hidden_layer)):
-            self.hidden_layer[i].value = self._calculate_output(i, hidden_layer=True)
-        for i in range(len(self.output_layer)):
-            self.output_layer[i].value = self._calculate_output(i, hidden_layer=False)
-        return [self.output_layer[i].value for i in range(len(self.output_layer))]
+        for hidden_layer in self.hidden_layers:
+            for neuron in hidden_layer:
+                neuron.update_value()
+
+        for neuron in self.output_layer:
+            neuron.update_value()
+        return [neuron.value for neuron in self.output_layer]
 
     def teach_step(self, input, target):
         if len(input) != len(self.input_layer):
@@ -54,63 +67,93 @@ class NeuralNetwork(object):
         if len(target) != len(self.output_layer):
             raise NeuralNetworkException('Improper target size')
 
-        for i in range(len(self.hidden_layer)):
-            self.hidden_layer[i].value = self._calculate_output(i, hidden_layer=True)
-        for i in range(len(self.output_layer)):
-            self.output_layer[i].value = self._calculate_output(i, hidden_layer=False)
+        self.run(input)
+        self._propagate_error(target)
 
-        for i in range(len(self.output_layer)):
-            self.output_layer[i].error = self._calculate_error(i, target[i], hidden_layer=False)
-        for i in range(len(self.hidden_layer)):
-            for j in range(len(self.output_layer)):
-                self.w_edges[i][j] = self._update_weight(i, j, self.w_edges)
+    def _init_edges(self, layer):
+        for neuron_begin in layer:
+            for neuron_end in self._get_layer_successor(layer):
+                edge = Edge(neuron_begin, neuron_end)
+                neuron_begin.outgoing_edges.append(edge)
+                neuron_end.ingoing_edges.append(edge)
 
-        for i in range(len(self.hidden_layer)):
-            self.hidden_layer[i].error = self._calculate_error(i, hidden_layer=True)
-        for i in range(len(self.input_layer)):
-            for j in range(len(self.hidden_layer)):
-                self.v_edges[i][j] = self._update_weight(i, j, self.v_edges)
+    def _propagate_error(self, target):
+        for i, neuron in enumerate(self.output_layer, start=0):
+            neuron.update_error(target[i])
+            for edge in neuron.ingoing_edges:
+                edge.update_weight(self.learning_rate)
 
-    def init_weights(self):
-        for i in range(len(self.input_layer)):
-            for j in range(len(self.hidden_layer)):
-                self.v_edges[i][j] = random.uniform(-1, 1)
+        for hidden_layer in self.hidden_layers:
+            for neuron in hidden_layer:
+                neuron.update_error()
+                for edge in neuron.ingoing_edges:
+                    edge.update_weight(self.learning_rate)
 
-        for i in range(len(self.hidden_layer)):
-            for j in range(len(self.output_layer)):
-                self.w_edges[i][j] = random.uniform(-1, 1)
-
-    def _update_weight(self, i, j, edges):
-        if self.v_edges == edges:
-            return self.v_edges[i][j] + self.learning_rate * self.hidden_layer[j].error * self.input_layer[i].value
+    def _get_layer_successor(self, layer):
+        if layer is self.input_layer:
+            if len(self.hidden_layers) > 0:
+                return self.hidden_layers[0]
+            else:
+                return self.output_layer
+        elif layer in self.hidden_layers:
+            if self.hidden_layers.index(layer) == len(self.hidden_layers) - 1:
+                return self.output_layer
+            else:
+                return self.hidden_layers[self.hidden_layers.index(layer) + 1]
+        elif layer is self.output_layer:
+            raise NeuralNetworkException('Output layer has no successor layer')
         else:
-            return self.w_edges[i][j] + self.learning_rate * self.output_layer[j].error * self.hidden_layer[i].value
-
-    def _calculate_error(self, node_index, target=None, hidden_layer=True):
-        if hidden_layer:
-            weighted_error_sum = 0
-            for i in range(len(self.output_layer)):
-                weighted_error_sum += self.w_edges[node_index][i] * self.output_layer[i].error
-            return weighted_error_sum * self.hidden_layer[node_index].value * (1 - self.hidden_layer[node_index].value)
-        else:
-            return self.output_layer[node_index].value * (1 - self.output_layer[node_index].value) * (target - self.output_layer[node_index].value)
-
-    def _calculate_output(self, node_index, hidden_layer=True):
-        result = 0
-        if hidden_layer:
-            for i in range(len(self.input_layer)):
-                result += self.v_edges[i][node_index] * self.input_layer[i].value
-            return sigmoid_function(result)
-        else:
-            for i in range(len(self.hidden_layer)):
-                result += self.w_edges[i][node_index] * self.hidden_layer[i].value
-            return sigmoid_function(result)
+            raise NeuralNetworkException('Given layer unknown')
 
 
-class Node(object):
+class Layer(object):
+    """Class represents neural network layer
+    """
+
+    def __init__(self, size):
+        self.neurons = [Neuron() for i in range(size)]
+
+    def __getitem__(self, index):
+        return self.neurons[index]
+
+    def __len__(self):
+        return len(self.neurons)
+
+
+class Edge(object):
+    """Class represents neural network edge connecting two neurons
+    """
+
+    def __init__(self, begin=None, end=None, weight=0):
+        self.begin = begin
+        self.end = end
+        self.weight = weight
+
+    def update_weight(self, learning_rate):
+        self.weight += learning_rate * self.begin.value * self.end.error
+
+
+class Neuron(object):
     """Class represents neural network node
     """
 
     def __init__(self, value=0, error=0):
         self.value = value
         self.error = error
+        self.ingoing_edges = []
+        self.outgoing_edges = []
+
+    def update_value(self):
+        weighted_value_sum = 0
+        for edge in self.ingoing_edges:
+            weighted_value_sum += edge.weight * edge.begin.value
+        self.value = sigmoid_function(weighted_value_sum)
+
+    def update_error(self, target=None):
+        if target is not None:
+            self.error = self.value * (1 - self.value) * (target - self.value)
+        else:
+            weighted_error_sum = 0
+            for edge in self.outgoing_edges:
+                weighted_error_sum += edge.weight * edge.end.error
+            self.error = weighted_error_sum * self.value * (1 - self.value)
