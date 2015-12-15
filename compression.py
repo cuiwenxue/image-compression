@@ -24,7 +24,7 @@ def getRandomSquare(img):
     rows = []
     for i in range(8):
         for j in range(8):
-            rows.append(imgBW.getpixel((x+i, y+j)))
+            rows.append(imgBW.getpixel((x+j, y+i)))
 
     for i in range(len(rows)):
         rows[i] = rows[i]/255.0
@@ -36,7 +36,7 @@ def getFixedSquare(img, x, y):
     rows = []
     for i in range(8):
         for j in range(8):
-            rows.append(imgBW.getpixel((x+i, y+j)))
+            rows.append(imgBW.getpixel((x+j, y+i)))
 
     for i in range(len(rows)):
         rows[i] = rows[i]/255.0
@@ -44,14 +44,20 @@ def getFixedSquare(img, x, y):
 
 def quantify(layer, bits):
     """Quantify real number output of layer to the no. of bits"""
-    step = 1.0/(pow(2, bits))
-
+    variants = pow(2, bits)
+    step = 1.0/variants
     quant = []
     for i in layer:
-        for j in range(pow(2, bits)):
-            if(0.0+j*step <= i < 0.0 +(j+1)*step):
+        for j in range(variants):
+            if j == variants-1:
+                #max possible value no matter which interval
                 ret = bin(0+j)[2:].zfill(bits)
                 quant.append(ret)
+                break;
+            elif 0.0+j*step <= i and i < 0.0 +(j+1)*step:
+                ret = bin(0+j)[2:].zfill(bits)
+                quant.append(ret)
+                break;
 
     return quant
 
@@ -73,18 +79,43 @@ def dequantify(quant):
 
     return dequant
 
-def putSquare(img, x, y, realValues):
+def putSquare(img, x, y, realValues, fileName):
     """
     Generate 8x8 square into given pos image from list of 64 realValues containing numbers 0.0-1.0
+    Saves under fileName.
     """
-    img = img.convert('L')
     quant = quantify(realValues, 8)
-    for i in quant:
-        for a in range(8):
-            for b in range(8):
-                img.putpixel((x+a, y+b), int("0b"+i, 2))
+    idx = 0
+    for a in range(8):
+        for b in range(8):
+            img.putpixel((x+b, y+a), int("0b"+quant[idx], 2))
+            idx = idx+1
+    img.save(fileName, "BMP")
 
-    img.save("newimg", "BMP")
+def getSequenceSquares(img):
+    """Get all consecutive squares from the picture"""
+    x = img.size[0]
+    y = img.size[1]
+    squares = []
+    for i in xrange(0, x, 8):
+        for j in xrange(0, y, 8):
+            squares.append(getFixedSquare(img, i, j))
+    return squares
 
 
-putSquare(openImage("1.bmp"), 0, 0, getFixedSquare(openImage(sys.argv[1]), 0, 0))
+
+def printPicture(img, squares):
+    '''
+    Print squares sequence into img
+    '''
+    img = img.convert('L')
+    idx = 0
+    x = img.size[0]
+    y = img.size[1]
+    for i in xrange(0, x, 8):
+        for j in xrange(0, y, 8):
+                putSquare(img, i, j, squares[idx], "newmap")
+                idx = idx + 1
+
+
+printPicture(openImage('empty.bmp'), getSequenceSquares(openImage("110.bmp")))
