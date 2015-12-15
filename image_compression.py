@@ -1,11 +1,24 @@
 import argparse
 import logging
+import random
+
+import neural_network
 
 
 def main():
     args = parse_arguments()
     format_logger(args.debug)
-    logging.getLogger('logger').info('Everything works.')
+    logging.getLogger('logger').info('Everything works')
+    # network = neural_network.load('network.zdp')
+    network = neural_network.NeuralNetwork(4, [3, 3], 2)
+    network.init_weights()
+
+    for i in range(10000):
+        a, b, c, d = random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)
+        network.teach_step([a, b, c, d], [(a + b) / 2, (c + d) / 2])
+
+    print(network.run([0.1, 0.2, 0.3, 0.15]))
+    # neural_network.save(network, 'network')
 
 
 def parse_arguments():
@@ -28,6 +41,8 @@ def format_logger(debug=False):
     else:
         logger.setLevel(logging.INFO)
     console_handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(levelname)s: %(message)s')
+    console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
 
