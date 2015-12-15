@@ -53,6 +53,9 @@ class NeuralNetwork(object):
         if len(input) != len(self.input_layer):
             raise NeuralNetworkException('Improper input size')
 
+        for i, neuron in enumerate(self.input_layer, start=0):
+            neuron.value = input[i]
+
         for hidden_layer in self.hidden_layers:
             for neuron in hidden_layer:
                 neuron.update_value()
@@ -124,7 +127,7 @@ class Edge(object):
     """Class represents neural network edge connecting two neurons
     """
 
-    def __init__(self, begin=None, end=None, weight=0):
+    def __init__(self, begin=None, end=None, weight=0.0):
         self.begin = begin
         self.end = end
         self.weight = weight
@@ -137,14 +140,14 @@ class Neuron(object):
     """Class represents neural network node
     """
 
-    def __init__(self, value=0, error=0):
+    def __init__(self, value=0.0, error=0.0):
         self.value = value
         self.error = error
         self.ingoing_edges = []
         self.outgoing_edges = []
 
     def update_value(self):
-        weighted_value_sum = 0
+        weighted_value_sum = 0.0
         for edge in self.ingoing_edges:
             weighted_value_sum += edge.weight * edge.begin.value
         self.value = sigmoid_function(weighted_value_sum)
@@ -153,7 +156,7 @@ class Neuron(object):
         if target is not None:
             self.error = self.value * (1 - self.value) * (target - self.value)
         else:
-            weighted_error_sum = 0
+            weighted_error_sum = 0.0
             for edge in self.outgoing_edges:
                 weighted_error_sum += edge.weight * edge.end.error
             self.error = weighted_error_sum * self.value * (1 - self.value)

@@ -10,14 +10,16 @@ def main():
     format_logger(args.debug)
     logging.getLogger('logger').info('Everything works')
     # network = neural_network.load('network.zdp')
-    network = neural_network.NeuralNetwork(4, [3, 3], 2)
+    network = neural_network.NeuralNetwork(4, [4], 2, learning_rate=0.4)
     network.init_weights()
 
-    for i in range(10000):
+    for i in xrange(300000):
         a, b, c, d = random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)
-        network.teach_step([a, b, c, d], [(a + b) / 2, (c + d) / 2])
+        network.teach_step([a, b, c, d], [(a+b)/2, (c+d)/2])
 
     print(network.run([0.1, 0.2, 0.3, 0.15]))
+    print(network.run([0.7, 0.8, 0.1, 0.9]))
+    print(network.run([0.2, 0.2, 0.4, 0.6]))
     # neural_network.save(network, 'network')
 
 
