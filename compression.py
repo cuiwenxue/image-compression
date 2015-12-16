@@ -72,7 +72,7 @@ def dequantify(quant):
     dequant = []
 
     for i in quant:
-        val = int("0b" + i, 2)
+        val = int('0b' + i, 2)
         ret = step / 2.0 + val * step
         dequant.append(ret)
 
@@ -87,9 +87,9 @@ def putSquare(img, x, y, real_values, filename):
     idx = 0
     for a in range(8):
         for b in range(8):
-            img.putpixel((x + b, y + a), int("0b" + quant[idx], 2))
+            img.putpixel((x + b, y + a), int('0b' + quant[idx], 2))
             idx += 1
-    img.save(filename, "BMP")
+    img.save(filename, 'BMP')
 
 
 def getSequenceSquares(img):
