@@ -31,18 +31,25 @@ def compress(image_path, neural_network_path, compressed_image_path):
     except neural_network.NeuralNetworkException as exc:
         logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
         exit(-1)
-    # TODO compression algorithm
+
     img = compression.openImage(image_path)
     squares = compression.getSequenceSquares(img)
     ret = []
     hidden = []
-    hidden.append(img.size)
-    print squares[0]
+    file = open('cmpIMG' + '.zdp', 'w')
+    file.write(str(img.size[0])+' '+str(img.size[1])+"\n")
     for sq in squares:
         ret.append(network.run(sq))
-        hidden.append(compression.quantify(network.hidden_layers[0], 8))
-    compression.printPicture(img, ret, 'afterRun.bmp')
-    pickle.dump(hidden, open('cmpIMG' + '.zdp', 'wb'), pickle.HIGHEST_PROTOCOL)
+        hidden_values = [neuron.value for neuron in network.hidden_layers[0]]
+        quant_values = compression.quantify(hidden_values, 4)
+        hidden.append(quant_values)
+        for val in quant_values:
+            file.write(val+" ")
+        file.write("\n")
+    compression.printPicture(img, ret, compressed_image_path)
+    pickle.dump(hidden, open('pickle_cmpIMG' + '.zdp', 'wb'), pickle.HIGHEST_PROTOCOL)
+
+#    for i in hidden:
 
 
 def decompress(compressed_image_path, neural_network_path, target_image_path):
@@ -56,8 +63,30 @@ def decompress(compressed_image_path, neural_network_path, target_image_path):
         logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
         exit(exc.errno)
 
-    # TODO decompression algorithm
-    raise NotImplementedError()
+    file = open(compressed_image_path, 'r')
+    size = file.readline().split()
+
+    quant_values = []
+    dequant_values = []
+
+    img = compression.newImage((int(size[0]), int(size[1])))
+    for line in file:
+        quant_values.append(line.split())
+
+    for i in quant_values:
+        dequant_values.append(compression.dequantify(i))
+
+    squares = []
+    for j in range(len(dequant_values)):
+        for i, val in enumerate(dequant_values[j], start=0):
+            network.hidden_layers[0][i].value = val
+        network.output_layer.update_values()
+        output_values = [neuron.value for neuron in network.output_layer]
+        squares.append(output_values)
+
+    compression.printPicture(img, squares, target_image_path)
+
+
 
 
 def main():
