@@ -1,6 +1,5 @@
 import argparse
 import logging
-import sys
 import pickle
 
 import compression
@@ -14,21 +13,12 @@ def teach(repeat, learning_rate, neural_network_path, learning_image):
     logging.getLogger('logger').info('Neural network edges initialized')
 
     image = compression.openImage(learning_image)
-    sys.stdout.write('INFO: Teaching in progress    ')logg
     for i in xrange(repeat):
-        sys.stdout.write('\b\b\b')
         data = compression.getRandomSquare(image)
         network.teach_step(data, data)
-        sys.stdout.write('%d%%' % (100 * (i + 1) / repeat))
-        sys.stdout.flush()
-    sys.stdout.write('\n')
+        logging.getLogger('logger').info('Teaching in progress... %d%%\033[F' % (100 * (i + 1) / repeat))
 
-    print "\n\tTEST RUN\n"
-    data = compression.getRandomSquare(image)
-    print data
-    print (network.run(data))
-
-    logging.getLogger('logger').info('Teaching completed')
+    logging.getLogger('logger').info('Teaching completed          ')
     neural_network.save(network, neural_network_path)
     logging.getLogger('logger').info('Neural network saved to ' + neural_network_path)
 
