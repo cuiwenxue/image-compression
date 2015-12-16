@@ -19,9 +19,14 @@ def teach(repeat, learning_rate, neural_network_path, learning_image):
         sys.stdout.write('\b\b\b')
         data = compression.getRandomSquare(image)
         network.teach_step(data, data)
-        sys.stdout.write("%d%%" % (100 * (i + 1) / repeat))
+        sys.stdout.write('%d%%' % (100 * (i + 1) / repeat))
         sys.stdout.flush()
-        sys.stdout.write('\n')
+    sys.stdout.write('\n')
+
+    print "\n\tTEST RUN\n"
+    data = compression.getRandomSquare(image)
+    print data
+    print (network.run(data))
 
     logging.getLogger('logger').info('Teaching completed')
     neural_network.save(network, neural_network_path)
@@ -88,7 +93,7 @@ class TeachAction(argparse.Action):
         if not 0 <= float(rate) <= 1:
             parser.error('RATE value must [0.0; 1.0]')
 
-        setattr(namespace, self.dest, values)
+        setattr(namespace, self.dest, [int(values[0]), float(values[1]), values[2], values[3]])
 
 
 def parse_arguments():
