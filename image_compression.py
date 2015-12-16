@@ -41,6 +41,35 @@ def compress(image_path, neural_network_path, compressed_image_path):
     for sq in squares:
         ret.append(network.run(sq))
         hidden_values = [neuron.value for neuron in network.hidden_layers[0]]
+        quant_values = compression.quantify2(hidden_values, 4)
+        hidden.append(quant_values)
+        for val in quant_values:
+            x=val+97
+            file.write(chr(x))
+
+
+        file.write("\n")
+    compression.printPicture(img, ret, compressed_image_path)
+    pickle.dump(hidden, open('pickle_cmpIMG' + '.zdp', 'wb'), pickle.HIGHEST_PROTOCOL)
+
+#    for i in hidden:
+def compressold(image_path, neural_network_path, compressed_image_path):
+    logging.getLogger('logger').info('Running program in compression mode')
+    try:
+        network = neural_network.load(neural_network_path)
+    except neural_network.NeuralNetworkException as exc:
+        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
+        exit(-1)
+
+    img = compression.openImage(image_path)
+    squares = compression.getSequenceSquares(img)
+    ret = []
+    hidden = []
+    file = open('cmpIMG' + '.zdp', 'w')
+    file.write(str(img.size[0])+' '+str(img.size[1])+"\n")
+    for sq in squares:
+        ret.append(network.run(sq))
+        hidden_values = [neuron.value for neuron in network.hidden_layers[0]]
         quant_values = compression.quantify(hidden_values, 4)
         hidden.append(quant_values)
         for val in quant_values:
@@ -49,10 +78,53 @@ def compress(image_path, neural_network_path, compressed_image_path):
     compression.printPicture(img, ret, compressed_image_path)
     pickle.dump(hidden, open('pickle_cmpIMG' + '.zdp', 'wb'), pickle.HIGHEST_PROTOCOL)
 
-#    for i in hidden:
-
-
 def decompress(compressed_image_path, neural_network_path, target_image_path):
+    logging.getLogger('logger').info('Running program in decompression mode')
+    try:
+        network = neural_network.load(neural_network_path)
+    except neural_network.NeuralNetworkException as exc:
+        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
+        exit(1)
+    except IOError as exc:
+        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
+        exit(exc.errno)
+
+    file = open(compressed_image_path, 'r')
+    size = file.readline().split()
+
+    quant_values = []
+    dequant_values = []
+
+  #  for line in file:
+ #       quant_values.append(line.split())
+#
+ #   for i in quant_values:
+#        dequant_values.append(compression.dequantify(i))
+
+    quant_line = []
+
+    img = compression.newImage((int(size[0]), int(size[1])))
+    for line in file:
+        for c in line:
+            if(c!='\n'):
+                quant_line.append(c)
+        quant_values.append(quant_line)
+        quant_line= []
+
+    for i in quant_values:
+        dequant_values.append(compression.dequantify2(i,4))
+
+    squares = []
+    for j in range(len(dequant_values)):
+        for i, val in enumerate(dequant_values[j], start=0):
+            network.hidden_layers[0][i].value = val
+        network.output_layer.update_values()
+        output_values = [neuron.value for neuron in network.output_layer]
+        squares.append(output_values)
+
+    compression.printPicture(img, squares, target_image_path)
+
+def decompressold(compressed_image_path, neural_network_path, target_image_path):
     logging.getLogger('logger').info('Running program in decompression mode')
     try:
         network = neural_network.load(neural_network_path)
