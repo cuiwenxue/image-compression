@@ -37,7 +37,7 @@ class NeuralNetwork(object):
     def __init__(self, input_layer_size, hidden_layers_sizes, output_layer_size, learning_rate=0.5):
         self.learning_rate = learning_rate
         self.input_layer = Layer(input_layer_size)
-        self.hidden_layers = [Layer(hidden_layers_sizes[i]) for i in range(len(hidden_layers_sizes))]
+        self.hidden_layers = [Layer(hidden_layers_sizes[i]) for i in xrange(len(hidden_layers_sizes))]
         self.output_layer = Layer(output_layer_size)
         self._init_edges(self.input_layer)
         for hidden_layer in self.hidden_layers:
@@ -123,7 +123,7 @@ class Layer(object):
     """
 
     def __init__(self, size):
-        self.neurons = [Neuron() for i in range(size)]
+        self.neurons = [Neuron() for i in xrange(size)]
 
     def __getitem__(self, index):
         return self.neurons[index]
