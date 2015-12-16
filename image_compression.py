@@ -14,7 +14,7 @@ def teach(repeat, learning_rate, neural_network_path, learning_image):
     logging.getLogger('logger').info('Neural network edges initialized')
 
     image = compression.openImage(learning_image)
-    sys.stdout.write('INFO: Teaching in progress    ')
+    sys.stdout.write('INFO: Teaching in progress    ')logg
     for i in xrange(repeat):
         sys.stdout.write('\b\b\b')
         data = compression.getRandomSquare(image)
@@ -128,6 +128,7 @@ def parse_arguments():
 
 def format_logger():
     logger = logging.getLogger('logger')
+    logger.setLevel(logging.INFO)
     console_handler = logging.StreamHandler()
     formatter = logging.Formatter('%(levelname)s: %(message)s')
     console_handler.setFormatter(formatter)
