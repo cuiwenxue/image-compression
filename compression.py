@@ -6,6 +6,8 @@ from PIL import Image
 def openImage(path):
     return Image.open(path)
 
+def newImage(size):
+    return Image.new('F', size)
 
 def getRandomSquare(img):
     """Get random square 8x8 from the picture
