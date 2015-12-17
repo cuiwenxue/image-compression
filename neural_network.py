@@ -13,7 +13,7 @@ def sigmoid_function(x):
 
 def save(neural_network, filename):
     if type(neural_network) is NeuralNetwork:
-        pickle.dump(neural_network, open(filename + '.zdp', 'wb'), pickle.HIGHEST_PROTOCOL)
+        pickle.dump(neural_network, open(filename, 'wb'), pickle.HIGHEST_PROTOCOL)
     else:
         raise NeuralNetworkException('Given neural network is not a type of ' + NeuralNetwork.__name__)
 

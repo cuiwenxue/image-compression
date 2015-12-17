@@ -3,57 +3,45 @@ import random
 from PIL import Image
 
 
-def openImage(path):
+def open_image(path):
     return Image.open(path)
 
-def newImage(size):
+
+def new_image(size):
     return Image.new('F', size)
 
-def getRandomSquare(img):
+
+def get_random_square(img):
     """Get random square 8x8 from the picture
        and quantify their colours to <0;1>
     """
-    imgBW = img.convert('L')
-    x = random.randint(0, (imgBW.size[0] - 8))
-    y = random.randint(0, (imgBW.size[1] - 8))
+    img_grayscale = img.convert('L')
+    x = random.randint(0, (img_grayscale.size[0] - 8))
+    y = random.randint(0, (img_grayscale.size[1] - 8))
 
     rows = []
     for i in range(8):
         for j in range(8):
-            rows.append(imgBW.getpixel((x + j, y + i)))
+            rows.append(img_grayscale.getpixel((x + j, y + i)))
 
     for i in range(len(rows)):
         rows[i] /= 255.0
     return rows
 
 
-def getFixedSquare(img, x, y):
+def get_fixed_square(img, x, y):
     """Get 8x8 squares from the fixed position of  the picture
     """
-    imgBW = img.convert('L')
+    img_grayscale = img.convert('L')
     rows = []
     for i in range(8):
         for j in range(8):
-            rows.append(imgBW.getpixel((x + j, y + i)))
+            rows.append(img_grayscale.getpixel((x + j, y + i)))
 
     for i in range(len(rows)):
         rows[i] /= 255.0
     return rows
 
-def quantify2(layer, bits):
-    """Quantify real number output of layer to the no. of bits
-    """
-    variants = pow(2, bits)
-    step = 1.0 / variants
-    quant = []
-    for i in layer:
-        for j in range(variants):
-            if 0.0 + j * step <= i < 0.0 + (j + 1) * step:
-                ret = (0 + j)
-                quant.append(ret)
-                break
-
-    return quant
 
 def quantify(layer, bits):
     """Quantify real number output of layer to the no. of bits
@@ -63,88 +51,63 @@ def quantify(layer, bits):
     quant = []
     for i in layer:
         for j in range(variants):
-            if j == variants - 1:
-                # max possible value no matter which interval
-                ret = bin(0 + j)[2:].zfill(bits)
-                quant.append(ret)
-                break
-            elif 0.0 + j * step <= i < 0.0 + (j + 1) * step:
-                ret = bin(0 + j)[2:].zfill(bits)
-                quant.append(ret)
+            if 0.0 + j * step <= i < 0.0 + (j + 1) * step:
+                quant.append(j)
                 break
 
     return quant
 
-def dequantify2(quant, bits):
+
+def dequantify(quant, bits):
     """Dequantifies list of bit values
     """
-    bits=4
-    if not len(quant):
-        print 'Empty list'
-        exit(-1)
-
     step = 1.0 / pow(2, bits)
-    #x = int(quant[0], 2)
+
     dequant = []
     for i in quant:
-        val = ord(i)-97
-        ret = step / 2.0 + val * step
-        dequant.append(ret)
-
-    return dequant
-
-def dequantify(quant):
-    """Dequantifies list of bit values
-    """
-    if not len(quant):
-        print 'Empty list'
-        exit(-1)
-
-    step = 1.0 / pow(2, len(quant[0]))
-    x = int(quant[0], 2)
-    dequant = []
-
-    for i in quant:
-        val = int('0b' + i, 2)
+        val = ord(i) - 97
         ret = step / 2.0 + val * step
         dequant.append(ret)
 
     return dequant
 
 
-def putSquare(img, x, y, real_values, filename):
+def put_square(img, x, y, real_values, filename):
     """Generate 8x8 square into given pos image from list of 64 realValues containing numbers 0.0-1.0
-       Saves under fileName.
+       Saves under filename.
     """
-    quant = quantify(real_values, 8)
+    pixel_values = []
+    for real_value in real_values:
+        pixel_values.append(int(real_value * 255))
+
     idx = 0
     for a in range(8):
         for b in range(8):
-            img.putpixel((x + b, y + a), int('0b' + quant[idx], 2))
+            img.putpixel((x + b, y + a), pixel_values[idx])
             idx += 1
     img.save(filename, 'BMP')
 
 
-def getSequenceSquares(img):
+def get_sequence_squares(img):
     """Get all consecutive squares from the picture
     """
-    x = img.size[0]
-    y = img.size[1]
+    x, y = img.size
+
     squares = []
     for i in xrange(0, x, 8):
         for j in xrange(0, y, 8):
-            squares.append(getFixedSquare(img, i, j))
+            squares.append(get_fixed_square(img, i, j))
     return squares
 
 
-def printPicture(img, squares, name):
+def print_picture(img, squares, name):
     """Print squares sequence into img
     """
     img = img.convert('L')
+    x, y = img.size
+
     idx = 0
-    x = img.size[0]
-    y = img.size[1]
     for i in xrange(0, x, 8):
         for j in xrange(0, y, 8):
-            putSquare(img, i, j, squares[idx], name)
+            put_square(img, i, j, squares[idx], name)
             idx += 1

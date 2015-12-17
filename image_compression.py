@@ -1,6 +1,5 @@
 import argparse
 import logging
-import pickle
 
 import compression
 import neural_network
@@ -8,74 +7,46 @@ import neural_network
 
 def teach(repeat, learning_rate, neural_network_path, learning_image):
     logging.getLogger('logger').info('Running program in teaching mode')
-    network = neural_network.NeuralNetwork(64, [16], 64, learning_rate=learning_rate)
+    network = neural_network.NeuralNetwork(64, [32], 64, learning_rate=learning_rate)
     network.init_weights()
     logging.getLogger('logger').info('Neural network edges initialized')
 
-    image = compression.openImage(learning_image)
+    image = compression.open_image(learning_image)
     for i in xrange(repeat):
-        data = compression.getRandomSquare(image)
+        data = compression.get_random_square(image)
         network.teach_step(data, data)
         logging.getLogger('logger').info('Teaching in progress... %d%%\033[F' % (100 * (i + 1) / repeat))
 
     logging.getLogger('logger').info('Teaching completed          ')
-    neural_network.save(network, neural_network_path)
-    logging.getLogger('logger').info('Neural network saved to ' + neural_network_path)
+    neural_network.save(network, neural_network_path + '.mkm')
+    logging.getLogger('logger').info('Neural network saved to ' + neural_network_path + '.mkm')
 
 
-def compress(image_path, neural_network_path, compressed_image_path):
+def compress(image_path, neural_network_path, bits, compressed_image_path):
     logging.getLogger('logger').info('Running program in compression mode')
     try:
         network = neural_network.load(neural_network_path)
     except neural_network.NeuralNetworkException as exc:
         logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
-        exit(-1)
+        exit(1)
+    except IOError as exc:
+        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
+        exit(exc.errno)
 
-    img = compression.openImage(image_path)
-    squares = compression.getSequenceSquares(img)
-    ret = []
-    hidden = []
-    file = open('cmpIMG' + '.zdp', 'w')
-    file.write(str(img.size[0])+' '+str(img.size[1])+"\n")
+    img = compression.open_image(image_path)
+    squares = compression.get_sequence_squares(img)
+
+    file = open(compressed_image_path + '.zdp', 'w')
+    file.write(str(img.size[0]) + ' ' + str(img.size[1]) + ' ' + str(bits) + '\n')
     for sq in squares:
-        ret.append(network.run(sq))
+        network.run(sq)
         hidden_values = [neuron.value for neuron in network.hidden_layers[0]]
-        quant_values = compression.quantify2(hidden_values, 4)
-        hidden.append(quant_values)
+        quant_values = compression.quantify(hidden_values, bits)
         for val in quant_values:
-            x=val+97
+            x = val + 97
             file.write(chr(x))
+        file.write('\n')
 
-
-        file.write("\n")
-    compression.printPicture(img, ret, compressed_image_path)
-    pickle.dump(hidden, open('pickle_cmpIMG' + '.zdp', 'wb'), pickle.HIGHEST_PROTOCOL)
-
-#    for i in hidden:
-def compressold(image_path, neural_network_path, compressed_image_path):
-    logging.getLogger('logger').info('Running program in compression mode')
-    try:
-        network = neural_network.load(neural_network_path)
-    except neural_network.NeuralNetworkException as exc:
-        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
-        exit(-1)
-
-    img = compression.openImage(image_path)
-    squares = compression.getSequenceSquares(img)
-    ret = []
-    hidden = []
-    file = open('cmpIMG' + '.zdp', 'w')
-    file.write(str(img.size[0])+' '+str(img.size[1])+"\n")
-    for sq in squares:
-        ret.append(network.run(sq))
-        hidden_values = [neuron.value for neuron in network.hidden_layers[0]]
-        quant_values = compression.quantify(hidden_values, 4)
-        hidden.append(quant_values)
-        for val in quant_values:
-            file.write(val+" ")
-        file.write("\n")
-    compression.printPicture(img, ret, compressed_image_path)
-    pickle.dump(hidden, open('pickle_cmpIMG' + '.zdp', 'wb'), pickle.HIGHEST_PROTOCOL)
 
 def decompress(compressed_image_path, neural_network_path, target_image_path):
     logging.getLogger('logger').info('Running program in decompression mode')
@@ -89,75 +60,32 @@ def decompress(compressed_image_path, neural_network_path, target_image_path):
         exit(exc.errno)
 
     file = open(compressed_image_path, 'r')
-    size = file.readline().split()
+    x, y, bits = file.readline().split()
 
     quant_values = []
     dequant_values = []
-
-  #  for line in file:
- #       quant_values.append(line.split())
-#
- #   for i in quant_values:
-#        dequant_values.append(compression.dequantify(i))
-
     quant_line = []
 
-    img = compression.newImage((int(size[0]), int(size[1])))
+    img = compression.new_image((int(x), int(y)))
     for line in file:
         for c in line:
-            if(c!='\n'):
+            if c != '\n':
                 quant_line.append(c)
         quant_values.append(quant_line)
-        quant_line= []
+        quant_line = []
 
     for i in quant_values:
-        dequant_values.append(compression.dequantify2(i,4))
+        dequant_values.append(compression.dequantify(i, int(bits)))
 
     squares = []
-    for j in range(len(dequant_values)):
-        for i, val in enumerate(dequant_values[j], start=0):
-            network.hidden_layers[0][i].value = val
+    for i in xrange(len(dequant_values)):
+        for j, val in enumerate(dequant_values[i], start=0):
+            network.hidden_layers[0][j].value = val
         network.output_layer.update_values()
         output_values = [neuron.value for neuron in network.output_layer]
         squares.append(output_values)
 
-    compression.printPicture(img, squares, target_image_path)
-
-def decompressold(compressed_image_path, neural_network_path, target_image_path):
-    logging.getLogger('logger').info('Running program in decompression mode')
-    try:
-        network = neural_network.load(neural_network_path)
-    except neural_network.NeuralNetworkException as exc:
-        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
-        exit(1)
-    except IOError as exc:
-        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
-        exit(exc.errno)
-
-    file = open(compressed_image_path, 'r')
-    size = file.readline().split()
-
-    quant_values = []
-    dequant_values = []
-
-    img = compression.newImage((int(size[0]), int(size[1])))
-    for line in file:
-        quant_values.append(line.split())
-
-    for i in quant_values:
-        dequant_values.append(compression.dequantify(i))
-
-    squares = []
-    for j in range(len(dequant_values)):
-        for i, val in enumerate(dequant_values[j], start=0):
-            network.hidden_layers[0][i].value = val
-        network.output_layer.update_values()
-        output_values = [neuron.value for neuron in network.output_layer]
-        squares.append(output_values)
-
-    compression.printPicture(img, squares, target_image_path)
-
-
+    compression.print_picture(img, squares, target_image_path)
 
 
 def main():
@@ -170,7 +98,7 @@ def main():
     if args.teach:
         teach(args.teach[0], args.teach[1], args.teach[2], args.teach[3])
     elif args.compress:
-        compress(args.compress[0], args.compress[1], args.compress[2])
+        compress(args.compress[0], args.compress[1], args.compress[2], args.compress[3])
     else:
         decompress(args.decompress[0], args.decompress[1], args.decompress[2])
 
@@ -187,6 +115,15 @@ class TeachAction(argparse.Action):
         setattr(namespace, self.dest, [int(values[0]), float(values[1]), values[2], values[3]])
 
 
+class CompressAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        image, network, bit, compressed = values
+        if not bit.isdigit():
+            parser.error('BIT value must by positive integer')
+
+        setattr(namespace, self.dest, [values[0], values[1], int(values[2]), values[3]])
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Image compression using neural network', formatter_class=argparse.RawTextHelpFormatter)
     group_mode = parser.add_mutually_exclusive_group(required=True)
@@ -201,18 +138,20 @@ def parse_arguments():
                                  'NETWORK  indicates path where  generated neural network\n'
                                  '         network will be saved\n'
                                  'TRAIN    indicates path where is located training image\n')
-    group_mode.add_argument('-c', dest='compress', nargs=3, metavar=('IMAGE', 'NETWORK', 'COMPRESSED'),
+    group_mode.add_argument('-c', dest='compress', nargs=4, metavar=('IMAGE', 'NETWORK', 'BIT', 'COMPRESSED'), action=CompressAction,
                             help='Compress given image using existing neural network\n\n'
                                  'IMAGE    indicates path to compress image\n'
-                                 'NETWORK  indicates path where is located neural network\n'
+                                 'NETWORK  indicates path where neural network is located\n'
+                                 'BIT      indicates  number of  bits  per pixel  in com-\n'
+                                 '         pressed image'
                                  'COMPRESSED indicates path  where compressed  image will\n'
-                                 '           be saved\n',)
+                                 '           be saved\n', )
     group_mode.add_argument('-d', dest='decompress', nargs=3, metavar=('COMPRESSED', 'NETWORK', 'IMAGE'),
                             help='Decompress given image using existing neural network\n\n'
                                  'COMPRESSED indicates path to compressed image\n'
-                                 'NETWORK  indicates path where is located neural network\n'
+                                 'NETWORK  indicates path where neural network is located\n'
                                  'IMAGE    indicates path  where  decompressed image will\n'
-                                 '         be saved\n',)
+                                 '         be saved\n', )
     args = parser.parse_args()
     return args
 
