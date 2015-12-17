@@ -40,6 +40,20 @@ def getFixedSquare(img, x, y):
         rows[i] /= 255.0
     return rows
 
+def quantify2(layer, bits):
+    """Quantify real number output of layer to the no. of bits
+    """
+    variants = pow(2, bits)
+    step = 1.0 / variants
+    quant = []
+    for i in layer:
+        for j in range(variants):
+            if 0.0 + j * step <= i < 0.0 + (j + 1) * step:
+                ret = (0 + j)
+                quant.append(ret)
+                break
+
+    return quant
 
 def quantify(layer, bits):
     """Quantify real number output of layer to the no. of bits
@@ -61,6 +75,23 @@ def quantify(layer, bits):
 
     return quant
 
+def dequantify2(quant, bits):
+    """Dequantifies list of bit values
+    """
+    bits=4
+    if not len(quant):
+        print 'Empty list'
+        exit(-1)
+
+    step = 1.0 / pow(2, bits)
+    #x = int(quant[0], 2)
+    dequant = []
+    for i in quant:
+        val = ord(i)-97
+        ret = step / 2.0 + val * step
+        dequant.append(ret)
+
+    return dequant
 
 def dequantify(quant):
     """Dequantifies list of bit values
