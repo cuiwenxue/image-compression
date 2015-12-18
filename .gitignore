@@ -2,6 +2,9 @@
 *.pyc
 
 # Saved neural network
+*.mkm
+
+# Compressed image
 *.zdp
 
 # Temporary files
