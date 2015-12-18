@@ -1,0 +1,163 @@
+#!/usr/bin/env python
+import argparse
+import logging
+
+import compression
+import neural_network
+
+
+def teach(neural_network_path, learning_image, repeat, learning_rate):
+    logging.getLogger('logger').info('Running program in teaching mode')
+    network = neural_network.NeuralNetwork(64, [32], 64, learning_rate=learning_rate)
+    network.init_weights()
+    logging.getLogger('logger').info('Neural network edges initialized')
+
+    image = compression.open_image(learning_image)
+    for i in xrange(repeat):
+        data = compression.get_random_square(image)
+        network.teach_step(data, data)
+        logging.getLogger('logger').info('Teaching in progress... %d%%\033[F' % (100 * (i + 1) / repeat))
+
+    logging.getLogger('logger').info('Teaching completed          ')
+    neural_network.save(network, neural_network_path + '.mkm')
+    logging.getLogger('logger').info('Neural network saved to ' + neural_network_path + '.mkm')
+
+
+def compress(image_path, neural_network_path, compressed_image_path, bits):
+    logging.getLogger('logger').info('Running program in compression mode')
+    try:
+        network = neural_network.load(neural_network_path)
+    except neural_network.NeuralNetworkException as exc:
+        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
+        exit(1)
+    except IOError as exc:
+        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
+        exit(exc.errno)
+
+    img = compression.open_image(image_path)
+    squares = compression.get_sequence_squares(img)
+
+    file = open(compressed_image_path + '.zdp', 'w')
+    file.write(str(img.size[0]) + ' ' + str(img.size[1]) + ' ' + str(bits) + '\n')
+    for sq in squares:
+        network.run(sq)
+        hidden_values = [neuron.value for neuron in network.hidden_layers[0]]
+        quant_values = compression.quantify(hidden_values, bits)
+        for val in quant_values:
+            x = val + 97
+            file.write(chr(x))
+        file.write('\n')
+
+
+def decompress(compressed_image_path, neural_network_path, target_image_path):
+    logging.getLogger('logger').info('Running program in decompression mode')
+    try:
+        network = neural_network.load(neural_network_path)
+    except neural_network.NeuralNetworkException as exc:
+        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
+        exit(1)
+    except IOError as exc:
+        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
+        exit(exc.errno)
+
+    file = open(compressed_image_path, 'r')
+    x, y, bits = file.readline().split()
+
+    quant_values = []
+    dequant_values = []
+    quant_line = []
+
+    img = compression.new_image((int(x), int(y)))
+    for line in file:
+        for c in line:
+            if c != '\n':
+                quant_line.append(c)
+        quant_values.append(quant_line)
+        quant_line = []
+
+    for i in quant_values:
+        dequant_values.append(compression.dequantify(i, int(bits)))
+
+    squares = []
+    for i in xrange(len(dequant_values)):
+        for j, val in enumerate(dequant_values[i], start=0):
+            network.hidden_layers[0][j].value = val
+        network.output_layer.update_values()
+        output_values = [neuron.value for neuron in network.output_layer]
+        squares.append(output_values)
+
+    compression.print_picture(img, squares, target_image_path)
+
+
+def main():
+    args = parse_arguments()
+    format_logger()
+
+    if args.command == 'gui':
+        # TODO run in graphical mode
+        raise NotImplementedError()
+    if args.command == 'teach':
+        teach(args.output, args.teach, args.repeat, args.rate)
+    elif args.command == 'compress':
+        compress(args.input, args.network, args.output, args.bit)
+    elif args.command == 'decompress':
+        decompress(args.input, args.network, args.output)
+    else:
+        raise Exception('Unknown command')
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Image compression using neural network', formatter_class=argparse.RawTextHelpFormatter)
+    subparsers = parser.add_subparsers(help='help for subcommands')
+
+    # create the parser for the 'gui' command
+    parser_gui = subparsers.add_parser('gui', help='run program in graphical user interface')
+    parser_gui.set_defaults(command='gui')
+
+    # create the parser for the 'teach' command
+    parser_teach = subparsers.add_parser('teach', help='create and teach new neural network using training data located in given directory')
+    parser_teach.add_argument('-t', '--teach', type=str, metavar='PATH', help='indicates path where is located training image', required=True)
+    parser_teach.add_argument('-o', '--output', type=str, metavar='PATH', default='network',
+                              help='indicates path where generated neural network network will be saved (default network.mkm)')
+    parser_teach.add_argument('--repeat', type=int, metavar='NUMBER', default=30000,
+                              help='indicates how many steps has to be taken during teaching algorithms (default 30000)')
+    parser_teach.add_argument('--rate', type=float, metavar='<0,1>', default=0.5,
+                              help='indicates learning rate, speed of teaching algorithm (default 0.5)')
+    parser_teach.set_defaults(command='teach')
+
+    # create the parser for the 'compress' command
+    parser_compress = subparsers.add_parser('compress', help='Compress given image using existing neural network')
+    parser_compress.add_argument('-i', '--input', type=str, metavar='PATH', help='indicates path to compress image', required=True)
+    parser_compress.add_argument('-n', '--network', type=str, metavar='PATH', default='network.mkm',
+                                 help='indicates path where neural network is located (default network.mkm)')
+    parser_compress.add_argument('-o', '--output', type=str, metavar='PATH', default='compressed_image',
+                                 help='indicates path where compressed image will be saved (default compressed_image.zdp)')
+    parser_compress.add_argument('-b', '--bit', type=int, default=4, choices=[1, 2, 3, 4, 5, 6, 7, 8],
+                                 help='indicates number of bits per pixel in compressed image (default 4)')
+    parser_compress.set_defaults(command='compress')
+
+    # create the parser for the 'decompress' command
+    parser_decompress = subparsers.add_parser('decompress', help='Decompress given image using existing neural network')
+    parser_decompress.add_argument('-i', '--input', type=str, metavar='PATH', default='compressed_image.zdp',
+                                   help='Indicates path to compressed image (default compressed_image.zdp)')
+    parser_decompress.add_argument('-n', '--network', type=str, metavar='PATH', default='network.mkm',
+                                   help='Indicates path where neural network is located (default network.mkm)')
+    parser_decompress.add_argument('-o', '--output', type=str, metavar='PATH', default='decompressed_image.bmp',
+                                   help='Indicates path where decompressed image will be saved (default decompressed_image.bmp)')
+    parser_decompress.set_defaults(command='decompress')
+
+    args = parser.parse_args()
+    return args
+
+
+def format_logger():
+    logger = logging.getLogger('logger')
+    logger.setLevel(logging.INFO)
+    console_handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(levelname)s: %(message)s')
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
+
+if __name__ == '__main__':
+    main()
