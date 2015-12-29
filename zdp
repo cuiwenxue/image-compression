@@ -1,92 +1,9 @@
 #!/usr/bin/env python
 import argparse
 import logging
-
+import gui
 import compression
 import neural_network
-
-
-def teach(neural_network_path, learning_image, repeat, learning_rate):
-    logging.getLogger('logger').info('Running program in teaching mode')
-    network = neural_network.NeuralNetwork(64, [32], 64, learning_rate=learning_rate)
-    network.init_weights()
-    logging.getLogger('logger').info('Neural network edges initialized')
-
-    image = compression.open_image(learning_image)
-    for i in xrange(repeat):
-        data = compression.get_random_square(image)
-        network.teach_step(data, data)
-        logging.getLogger('logger').info('Teaching in progress... %d%%\033[F' % (100 * (i + 1) / repeat))
-
-    logging.getLogger('logger').info('Teaching completed          ')
-    neural_network.save(network, neural_network_path + '.mkm')
-    logging.getLogger('logger').info('Neural network saved to ' + neural_network_path + '.mkm')
-
-
-def compress(image_path, neural_network_path, compressed_image_path, bits):
-    logging.getLogger('logger').info('Running program in compression mode')
-    try:
-        network = neural_network.load(neural_network_path)
-    except neural_network.NeuralNetworkException as exc:
-        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
-        exit(1)
-    except IOError as exc:
-        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
-        exit(exc.errno)
-
-    img = compression.open_image(image_path)
-    squares = compression.get_sequence_squares(img)
-
-    file = open(compressed_image_path + '.zdp', 'w')
-    file.write(str(img.size[0]) + ' ' + str(img.size[1]) + ' ' + str(bits) + '\n')
-    for sq in squares:
-        network.run(sq)
-        hidden_values = [neuron.value for neuron in network.hidden_layers[0]]
-        quant_values = compression.quantify(hidden_values, bits)
-        for val in quant_values:
-            x = val + 97
-            file.write(chr(x))
-        file.write('\n')
-
-
-def decompress(compressed_image_path, neural_network_path, target_image_path):
-    logging.getLogger('logger').info('Running program in decompression mode')
-    try:
-        network = neural_network.load(neural_network_path)
-    except neural_network.NeuralNetworkException as exc:
-        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
-        exit(1)
-    except IOError as exc:
-        logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
-        exit(exc.errno)
-
-    file = open(compressed_image_path, 'r')
-    x, y, bits = file.readline().split()
-
-    quant_values = []
-    dequant_values = []
-    quant_line = []
-
-    img = compression.new_image((int(x), int(y)))
-    for line in file:
-        for c in line:
-            if c != '\n':
-                quant_line.append(c)
-        quant_values.append(quant_line)
-        quant_line = []
-
-    for i in quant_values:
-        dequant_values.append(compression.dequantify(i, int(bits)))
-
-    squares = []
-    for i in xrange(len(dequant_values)):
-        for j, val in enumerate(dequant_values[i], start=0):
-            network.hidden_layers[0][j].value = val
-        network.output_layer.update_values()
-        output_values = [neuron.value for neuron in network.output_layer]
-        squares.append(output_values)
-
-    compression.print_picture(img, squares, target_image_path)
 
 
 def main():
@@ -94,14 +11,31 @@ def main():
     format_logger()
 
     if args.command == 'gui':
-        # TODO run in graphical mode
-        raise NotImplementedError()
-    if args.command == 'teach':
-        teach(args.output, args.teach, args.repeat, args.rate)
+        app = gui.Application()
+        app.mainloop()
+    elif args.command == 'teach':
+        logging.getLogger('logger').info('Running program in teaching mode')
+        compression.teach(args.output + '.mkm', args.teach, args.repeat, args.rate)
     elif args.command == 'compress':
-        compress(args.input, args.network, args.output, args.bit)
+        try:
+            logging.getLogger('logger').info('Running program in compression mode')
+            compression.compress(args.input, args.network, args.output + '.zdp', args.bit)
+        except neural_network.NeuralNetworkException as exc:
+            logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
+            exit(1)
+        except IOError as exc:
+            logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
+            exit(exc.errno)
     elif args.command == 'decompress':
-        decompress(args.input, args.network, args.output)
+        try:
+            logging.getLogger('logger').info('Running program in decompression mode')
+            compression.decompress(args.input, args.network, args.output)
+        except neural_network.NeuralNetworkException as exc:
+            logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
+            exit(1)
+        except IOError as exc:
+            logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
+            exit(exc.errno)
     else:
         raise Exception('Unknown command')
 

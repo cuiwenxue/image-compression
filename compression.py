@@ -1,6 +1,74 @@
+import logging
+import neural_network
 import random
 
 from PIL import Image
+
+
+def teach(neural_network_path, learning_image, repeat, learning_rate):
+    network = neural_network.NeuralNetwork(64, [32], 64, learning_rate=learning_rate)
+    network.init_weights()
+    logging.getLogger('logger').info('Neural network edges initialized')
+
+    image = open_image(learning_image)
+    for i in xrange(repeat):
+        data = get_random_square(image)
+        network.teach_step(data, data)
+        logging.getLogger('logger').info('Teaching in progress... %d%%\033[F' % (100 * (i + 1) / repeat))
+
+    logging.getLogger('logger').info('Teaching completed          ')
+    neural_network.save(network, neural_network_path)
+    logging.getLogger('logger').info('Neural network saved to ' + neural_network_path)
+
+
+def compress(image_path, neural_network_path, compressed_image_path, bits):
+    network = neural_network.load(neural_network_path)
+
+    img = open_image(image_path)
+    squares = get_sequence_squares(img)
+
+    file = open(compressed_image_path, 'w')
+    file.write(str(img.size[0]) + ' ' + str(img.size[1]) + ' ' + str(bits) + '\n')
+    for sq in squares:
+        network.run(sq)
+        hidden_values = [neuron.value for neuron in network.hidden_layers[0]]
+        quant_values = quantify(hidden_values, bits)
+        for val in quant_values:
+            x = val + 97
+            file.write(chr(x))
+        file.write('\n')
+
+
+def decompress(compressed_image_path, neural_network_path, target_image_path):
+    network = neural_network.load(neural_network_path)
+
+    file = open(compressed_image_path, 'r')
+    x, y, bits = file.readline().split()
+
+    quant_values = []
+    dequant_values = []
+    quant_line = []
+
+    img = new_image((int(x), int(y)))
+    for line in file:
+        for c in line:
+            if c != '\n':
+                quant_line.append(c)
+        quant_values.append(quant_line)
+        quant_line = []
+
+    for i in quant_values:
+        dequant_values.append(dequantify(i, int(bits)))
+
+    squares = []
+    for i in xrange(len(dequant_values)):
+        for j, val in enumerate(dequant_values[i], start=0):
+            network.hidden_layers[0][j].value = val
+        network.output_layer.update_values()
+        output_values = [neuron.value for neuron in network.output_layer]
+        squares.append(output_values)
+
+    print_picture(img, squares, target_image_path)
 
 
 def open_image(path):
