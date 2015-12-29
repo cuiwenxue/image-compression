@@ -5,6 +5,7 @@
 import math
 import random
 import pickle
+import sys
 
 
 def sigmoid_function(x):
@@ -13,7 +14,11 @@ def sigmoid_function(x):
 
 def save(neural_network, filename):
     if type(neural_network) is NeuralNetwork:
-        pickle.dump(neural_network, open(filename, 'wb'), pickle.HIGHEST_PROTOCOL)
+        try:
+            pickle.dump(neural_network, open(filename, 'wb'), pickle.HIGHEST_PROTOCOL)
+        except RuntimeError:
+            sys.setrecursionlimit(sys.getrecursionlimit() * 10)
+            pickle.dump(neural_network, open(filename, 'wb'), pickle.HIGHEST_PROTOCOL)
     else:
         raise NeuralNetworkException('Given neural network is not a type of ' + NeuralNetwork.__name__)
 
@@ -44,8 +49,7 @@ class NeuralNetwork(object):
             self._init_edges(hidden_layer)
 
     def init_weights(self):
-        """Initialize all network edges with random values from <-1; 1>
-        """
+        """Initialize all network edges with random values from <-1; 1>"""
         for neuron in self.input_layer:
             for edge in neuron.outgoing_edges:
                 edge.weight = random.uniform(-1, 1)
@@ -81,8 +85,7 @@ class NeuralNetwork(object):
         self._propagate_error(target)
 
     def _init_edges(self, layer):
-        """Creates all possible connection between neurons in network
-        """
+        """Creates all possible connection between neurons in network"""
         for neuron_begin in layer:
             for neuron_end in self._get_layer_successor(layer):
                 edge = Edge(neuron_begin, neuron_end)
@@ -119,8 +122,7 @@ class NeuralNetwork(object):
 
 
 class Layer(object):
-    """Class represents neural network layer
-    """
+    """Class represents neural network layer"""
 
     def __init__(self, size):
         self.neurons = [Neuron() for i in xrange(size)]
@@ -137,8 +139,7 @@ class Layer(object):
 
 
 class Edge(object):
-    """Class represents neural network edge connecting two neurons
-    """
+    """Class represents neural network edge connecting two neurons"""
 
     def __init__(self, begin=None, end=None, weight=0.0):
         self.begin = begin
@@ -150,8 +151,7 @@ class Edge(object):
 
 
 class Neuron(object):
-    """Class represents neural network node
-    """
+    """Class represents neural network node"""
 
     def __init__(self, value=0.0, error=0.0):
         self.value = value
