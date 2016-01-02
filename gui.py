@@ -116,10 +116,8 @@ class Application(Tk):
                     output, self.entry_training_image.get(), int(self.entry_repetitions.get()), float(self.entry_rate.get()), progress_bar,))
                 thread.start()
                 progress_bar.start(30)
-                #progress_bar.mainloop()
-                print 'Done1'
+                progress_bar.mainloop()
                 thread.join()
-                print 'Done2'
         except ValueError:
             tkMessageBox.showerror(message='Improper input values')
 
@@ -150,10 +148,8 @@ class Application(Tk):
     @staticmethod
     def do_teach(output, image, repetitions, rate, progress_bar):
         compression.teach(output, image, repetitions, rate)
-        progress_bar.stop()
         progress_bar.quit()
         progress_bar.destroy()
-        print 'zastopowal'
 
     @staticmethod
     def open_button_clicked(entry, filetypes=[]):
