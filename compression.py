@@ -25,18 +25,19 @@ def compress(image_path, neural_network_path, compressed_image_path, bits):
     network = neural_network.load(neural_network_path)
 
     img = open_image(image_path)
-    squares = get_sequence_squares(img)
+    rgb_squares = get_sequence_squares(img)
 
     file = open(compressed_image_path, 'w')
     file.write(str(img.size[0]) + ' ' + str(img.size[1]) + ' ' + str(bits) + '\n')
-    for sq in squares:
-        network.run(sq)
-        hidden_values = [neuron.value for neuron in network.hidden_layers[0]]
-        quant_values = quantify(hidden_values, bits)
-        for val in quant_values:
-            x = val + 97
-            file.write(chr(x))
-        file.write('\n')
+    for rgb_square in rgb_squares:
+        for sq in rgb_square:
+            network.run(sq)
+            hidden_values = [neuron.value for neuron in network.hidden_layers[0]]
+            quant_values = quantify(hidden_values, bits)
+            for val in quant_values:
+                x = val + 97
+                file.write(chr(x))
+            file.write('\n')
 
 
 def decompress(compressed_image_path, neural_network_path, target_image_path):
@@ -98,17 +99,19 @@ def get_random_square(img):
 
 
 def get_fixed_square(img, x, y):
-    """Get 8x8 squares from the fixed position of  the picture
+    """Get 8x8 squares from the fixed position of the picture
     """
-    img_grayscale = img.convert('L')
-    rows = []
+    img_rgb = img.convert('RGB')
+    rgb_rows = ([], [], [])
+
     for i in range(8):
         for j in range(8):
-            rows.append(img_grayscale.getpixel((x + j, y + i)))
+            r, g, b = img_rgb.getpixel((x + j, y + i))
+            rgb_rows[0].append(r / 255.0)
+            rgb_rows[1].append(g / 255.0)
+            rgb_rows[2].append(b / 255.0)
 
-    for i in range(len(rows)):
-        rows[i] /= 255.0
-    return rows
+    return rgb_rows
 
 
 def quantify(layer, bits):
