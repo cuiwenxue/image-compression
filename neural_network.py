@@ -17,6 +17,7 @@ def save(neural_network, filename):
         try:
             pickle.dump(neural_network, open(filename, 'wb'), pickle.HIGHEST_PROTOCOL)
         except RuntimeError:
+            # recursion limit exceeded, try with bigger one
             sys.setrecursionlimit(sys.getrecursionlimit() * 10)
             pickle.dump(neural_network, open(filename, 'wb'), pickle.HIGHEST_PROTOCOL)
     else:
@@ -60,6 +61,7 @@ class NeuralNetwork(object):
                     edge.weight = random.uniform(-1, 1)
 
     def run(self, input):
+        """Counts and returns network output for given input"""
         if len(input) != len(self.input_layer):
             raise NeuralNetworkException('Improper input size')
 
@@ -93,6 +95,9 @@ class NeuralNetwork(object):
                 neuron_end.ingoing_edges.append(edge)
 
     def _propagate_error(self, target):
+        """Implementation of error backpropagation algorithm step.
+           Counts error for each neuron and updates all weights
+        """
         for i, neuron in enumerate(self.output_layer, start=0):
             neuron.update_error(target[i])
             for edge in neuron.ingoing_edges:
@@ -160,12 +165,16 @@ class Neuron(object):
         self.outgoing_edges = []
 
     def update_value(self):
+        """Update neuron output/value - perform weighted sum of ingoing edges values
+           and applies sigmoid function
+        """
         weighted_value_sum = 0.0
         for edge in self.ingoing_edges:
             weighted_value_sum += edge.weight * edge.begin.value
         self.value = sigmoid_function(weighted_value_sum)
 
     def update_error(self, target=None):
+        """Update neuron's error - used by error backpropagation algorithm"""
         if target is not None:
             self.error = self.value * (1 - self.value) * (target - self.value)
         else:

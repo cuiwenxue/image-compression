@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import logging
+
 import gui
 import compression
 import neural_network
@@ -10,34 +11,44 @@ def main():
     args = parse_arguments()
     format_logger()
 
-    if args.command == 'gui':
-        app = gui.Application()
-        app.mainloop()
-    elif args.command == 'teach':
-        logging.getLogger('logger').info('Running program in teaching mode')
-        compression.teach(args.output + '.mkm', args.teach, args.repeat, args.rate)
-    elif args.command == 'compress':
-        try:
-            logging.getLogger('logger').info('Running program in compression mode')
-            compression.compress(args.input, args.network, args.output + '.zdp', args.bit)
-        except neural_network.NeuralNetworkException as exc:
-            logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
-            exit(1)
-        except IOError as exc:
-            logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
-            exit(exc.errno)
-    elif args.command == 'decompress':
-        try:
-            logging.getLogger('logger').info('Running program in decompression mode')
-            compression.decompress(args.input, args.network, args.output)
-        except neural_network.NeuralNetworkException as exc:
-            logging.getLogger('logger').critical('Cannot load neural network: ' + exc.message)
-            exit(1)
-        except IOError as exc:
-            logging.getLogger('logger').critical('Cannot load neural network: ' + exc.strerror)
-            exit(exc.errno)
-    else:
-        raise Exception('Unknown command')
+    globals()['do_' + args.command](args)
+
+
+def do_gui(args):
+    app = gui.Application()
+    app.mainloop()
+
+
+def do_teach(args):
+    logger = logging.getLogger('logger')
+    logger.info('Running program in teaching mode')
+    compression.teach(args.output + '.mkm', args.teach, args.repeat, args.rate)
+
+
+def do_compress(args):
+    logger = logging.getLogger('logger')
+    try:
+        logger.info('Running program in compression mode')
+        compression.compress(args.input, args.network, args.output + '.zdp', args.bit)
+    except neural_network.NeuralNetworkException as exc:
+        logger.critical('Cannot load neural network: ' + exc.message)
+        exit(1)
+    except IOError as exc:
+        logger.critical('Cannot load neural network: ' + exc.strerror)
+        exit(exc.errno)
+
+
+def do_decompress(args):
+    logger = logging.getLogger('logger')
+    try:
+        logger.info('Running program in decompression mode')
+        compression.decompress(args.input, args.network, args.output)
+    except neural_network.NeuralNetworkException as exc:
+        logger.critical('Cannot load neural network: ' + exc.message)
+        exit(1)
+    except IOError as exc:
+        logger.critical('Cannot load neural network: ' + exc.strerror)
+        exit(exc.errno)
 
 
 def parse_arguments():
