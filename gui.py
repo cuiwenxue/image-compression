@@ -32,127 +32,164 @@ class Application(Tk):
         self._init_decompress_page()
 
     def _init_teach_page(self):
-
-        teach_button = Button(self.teach_page, text='Run', command=self.teach_button_clicked)
-        teach_button.grid(column=2, row=7)
+        """Initialize entries and buttons in 'Teach' tab.
+           Assign actions to buttons and set default values.
+        """
+        teach_button = Button(self.teach_page, text='Run',
+                              command=lambda: Application.run_button_clicked('.mkm', [('Neural network', '.mkm')], self.teach_page, self.do_teach))
+        teach_button.grid(column=2, row=9)
 
         label = Label(self.teach_page, text='Training image', anchor='w')
         label.grid(column=0, row=0, columnspan=2, sticky='ew')
-        self.entry_training_image = Entry(self.teach_page)
-        self.entry_training_image.grid(column=0, row=1, sticky='ew')
-        self.entry_training_image.focus_set()
+        self.training_image_entry = Entry(self.teach_page)
+        self.training_image_entry.grid(column=0, row=1, sticky='ew')
+        self.training_image_entry.focus_set()
         training_image_button = Button(self.teach_page, text='Open',
-                                       command=lambda: Application.open_button_clicked(self.entry_training_image, [('Bitmap', '.bmp')]))
+                                       command=lambda: Application.open_button_clicked(self.training_image_entry, [('Bitmap', '.bmp')]))
         training_image_button.grid(column=1, row=1)
 
         label = Label(self.teach_page, text='Number of repetitions', anchor='w')
         label.grid(column=0, row=2, columnspan=2, sticky='ew')
-        self.entry_repetitions = Entry(self.teach_page)
-        self.entry_repetitions.insert(0, '10000')
-        self.entry_repetitions.grid(column=0, row=3, sticky='ew')
+        self.repetitions_entry = Entry(self.teach_page)
+        self.repetitions_entry.insert(0, '30000')
+        self.repetitions_entry.grid(column=0, row=3, sticky='ew')
 
         label = Label(self.teach_page, text='Learning rate', anchor='w')
         label.grid(column=0, row=4, columnspan=2, sticky='ew')
-        self.entry_rate = Entry(self.teach_page)
-        self.entry_rate.insert(0, '0.5')
-        self.entry_rate.grid(column=0, row=5, sticky='ew')
+        self.rate_entry = Entry(self.teach_page)
+        self.rate_entry.insert(0, '0.5')
+        self.rate_entry.grid(column=0, row=5, sticky='ew')
+
+        label = Label(self.teach_page, text='Hidden layer size', anchor='w')
+        label.grid(column=0, row=6, columnspan=2, sticky='ew')
+        self.layer_size_entry = Entry(self.teach_page)
+        self.layer_size_entry.insert(0, '32')
+        self.layer_size_entry.grid(column=0, row=8, sticky='ew')
 
     def _init_compress_page(self):
-        compress_button = Button(self.compress_page, text='Run', command=self.compress_button_clicked)
-        compress_button.grid(column=5, row=7)
+        """Initialize entries and buttons in 'Compress' tab.
+           Assign actions to buttons and set default values.
+        """
+        compress_button = Button(self.compress_page, text='Run',
+                                 command=lambda: Application.run_button_clicked('.zdp', [('Compressed image', '.zdp')], self.compress_page,
+                                                                                self.do_compress))
+        compress_button.grid(column=2, row=7, sticky='sw')
 
         label = Label(self.compress_page, text='Image', anchor='w')
-        label.grid(column=3, row=0, columnspan=2, sticky='ew')
-        self.entry_image = Entry(self.compress_page)
-        self.entry_image.grid(column=3, row=1, sticky='EW')
-        self.entry_image.focus_set()
+        label.grid(column=0, row=0, columnspan=2, sticky='ew')
+        self.image_entry = Entry(self.compress_page)
+        self.image_entry.grid(column=0, row=1, sticky='EW')
+        self.image_entry.focus_set()
         image_button = Button(self.compress_page, text='Open',
-                              command=lambda: Application.open_button_clicked(self.entry_image, [('Bitmap', '.bmp')]))
-        image_button.grid(column=4, row=1)
+                              command=lambda: Application.open_button_clicked(self.image_entry, [('Bitmap', '.bmp')]))
+        image_button.grid(column=1, row=1)
 
         label = Label(self.compress_page, text='Neural network', anchor='w')
-        label.grid(column=3, row=2, columnspan=2, sticky='ew')
-        self.entry_network = Entry(self.compress_page)
-        self.entry_network.grid(column=3, row=3, sticky='EW')
+        label.grid(column=0, row=2, columnspan=2, sticky='ew')
+        self.network_entry = Entry(self.compress_page)
+        self.network_entry.grid(column=0, row=3, sticky='EW')
         network_button = Button(self.compress_page, text='Open',
-                                command=lambda: Application.open_button_clicked(self.entry_network, [('Neural network', '.mkm')]))
-        network_button.grid(column=4, row=3)
+                                command=lambda: Application.open_button_clicked(self.network_entry, [('Neural network', '.mkm')]))
+        network_button.grid(column=1, row=3)
 
         label = Label(self.compress_page, text='Bits', anchor='w')
-        label.grid(column=3, row=4, columnspan=2, sticky='ew')
-        self.entry_bits = Entry(self.compress_page)
-        self.entry_bits.insert(0, '4')
-        self.entry_bits.grid(column=3, row=5, sticky='EW')
+        label.grid(column=0, row=4, columnspan=2, sticky='ew')
+        self.bits_entry = Entry(self.compress_page)
+        self.bits_entry.insert(0, '4')
+        self.bits_entry.grid(column=0, row=5, sticky='EW')
 
     def _init_decompress_page(self):
-        compress_button = Button(self.decompress_page, text='Run', command=self.decompress_button_clicked)
-        compress_button.grid(column=8, row=7)
+        """Initialize entries and buttons in 'Decompress' tab.
+           Assign actions to buttons and set default values.
+        """
+        compress_button = Button(self.decompress_page, text='Run',
+                                 command=lambda: Application.run_button_clicked('.bmp', [('Bitmap', '.bmp')], self.decompress_page,
+                                                                                self.do_decompress))
+        compress_button.grid(column=2, row=7)
 
         label = Label(self.decompress_page, text='Compressed image', anchor='w')
-        label.grid(column=6, row=0, columnspan=2, sticky='ew')
-        self.entry_compressed_image = Entry(self.decompress_page)
-        self.entry_compressed_image.grid(column=6, row=1, sticky='EW')
-        self.entry_compressed_image.focus_set()
+        label.grid(column=0, row=0, columnspan=2, sticky='ew')
+        self.compressed_image_entry = Entry(self.decompress_page)
+        self.compressed_image_entry.grid(column=0, row=1, sticky='EW')
+        self.compressed_image_entry.focus_set()
         compressed_image_button = Button(self.decompress_page, text='Open',
-                                         command=lambda: Application.open_button_clicked(self.entry_compressed_image, [('Compressed image', '.zdp')]))
-        compressed_image_button.grid(column=7, row=1)
+                                         command=lambda: Application.open_button_clicked(self.compressed_image_entry, [('Compressed image', '.zdp')]))
+        compressed_image_button.grid(column=1, row=1)
 
         label = Label(self.decompress_page, text='Neural network', anchor='w')
-        label.grid(column=6, row=2, columnspan=2, sticky='ew')
-        self.entry_network2 = Entry(self.decompress_page)
-        self.entry_network2.grid(column=6, row=3, sticky='EW')
+        label.grid(column=0, row=2, columnspan=2, sticky='ew')
+        self.network_entry2 = Entry(self.decompress_page)
+        self.network_entry2.grid(column=0, row=3, sticky='EW')
         network_button2 = Button(self.decompress_page, text='Open',
-                                 command=lambda: Application.open_button_clicked(self.entry_network2, [('Neural network', '.mkm')]))
-        network_button2.grid(column=7, row=3)
-
-    def teach_button_clicked(self):
-        try:
-            output = tkFileDialog.asksaveasfilename(defaultextension='.mkm', filetypes=[('Neural network', '.mkm')])
-            if output != '':
-                progress_bar = ttk.Progressbar(self.teach_page, orient='horizontal', mode='indeterminate')
-                progress_bar.grid(column=0, row=8, columnspan=3, sticky='EW')
-
-                thread = threading.Thread(target=Application.do_teach, args=(
-                    output, self.entry_training_image.get(), int(self.entry_repetitions.get()), float(self.entry_rate.get()), progress_bar,))
-                thread.start()
-                progress_bar.start(30)
-                progress_bar.mainloop()
-                thread.join()
-        except ValueError:
-            tkMessageBox.showerror(message='Improper input values')
-
-    def compress_button_clicked(self):
-        try:
-            output = tkFileDialog.asksaveasfilename(defaultextension='.zdp', filetypes=[('Compressed image', '.zdp')])
-            if output != '':
-                compression.compress(self.entry_image.get(), self.entry_network.get(), output, int(self.entry_bits.get()))
-        except ValueError:
-            tkMessageBox.showerror(message='Improper input values')
-        except neural_network.NeuralNetworkException as exc:
-            tkMessageBox.showerror(message='Cannot load neural network: ' + exc.message)
-        except IOError as exc:
-            tkMessageBox.showerror(message='Cannot load neural network: ' + exc.strerror)
-
-    def decompress_button_clicked(self):
-        try:
-            output = tkFileDialog.asksaveasfilename(defaultextension='.bmp', filetypes=[('Bitmap', '.bmp')])
-            if output != '':
-                compression.decompress(self.entry_compressed_image.get(), self.entry_network2.get(), output)
-        except ValueError:
-            tkMessageBox.showerror(message='Improper input values')
-        except neural_network.NeuralNetworkException as exc:
-            tkMessageBox.showerror(message='Cannot load neural network: ' + exc.message)
-        except IOError as exc:
-            tkMessageBox.showerror(message='Cannot load neural network: ' + exc.strerror)
+                                 command=lambda: Application.open_button_clicked(self.network_entry2, [('Neural network', '.mkm')]))
+        network_button2.grid(column=1, row=3)
 
     @staticmethod
-    def do_teach(output, image, repetitions, rate, progress_bar):
-        compression.teach(output, image, repetitions, rate)
-        progress_bar.quit()
-        progress_bar.destroy()
+    def run_button_clicked(defaultextension, filetypes, parent, action):
+        """Open dialog window so that user can choose output file.
+           Show message if any error occur.
+        """
+        try:
+            output = tkFileDialog.asksaveasfilename(defaultextension=defaultextension, filetypes=filetypes)
+            if output != '':
+                Application.do_time_consuming_action(action, output, ProgressBar(parent))
+        except ValueError:
+            tkMessageBox.showerror(message='Improper input values')
+        except neural_network.NeuralNetworkException as exc:
+            tkMessageBox.showerror(message='Cannot load neural network: ' + exc.message)
+        except IOError as exc:
+            tkMessageBox.showerror(message='Cannot load neural network: ' + exc.strerror)
 
     @staticmethod
     def open_button_clicked(entry, filetypes=[]):
+        """Open dialog window and place chosen file path in entry"""
         filename = tkFileDialog.askopenfilename(filetypes=filetypes)
         entry.delete(0, END)
         entry.insert(0, filename)
+
+    @staticmethod
+    def do_time_consuming_action(target, output, progress_bar):
+        """Starts new thread in which target is performed. Draws progress_bar until target is being performed."""
+        thread = threading.Thread(target=target, args=(output, progress_bar,))
+        thread.start()
+        progress_bar.loop()
+        thread.join()
+
+    def do_teach(self, output, progress_bar):
+        try:
+            compression.teach(output, self.training_image_entry.get(), int(self.repetitions_entry.get()), float(self.rate_entry.get()),
+                              int(self.layer_size_entry.get()))
+        except Exception:
+            raise
+        finally:
+            progress_bar.quit()
+
+    def do_compress(self, output, progress_bar):
+        try:
+            compression.compress(self.image_entry.get(), self.network_entry.get(), output, int(self.bits_entry.get()))
+        except Exception:
+            raise
+        finally:
+            progress_bar.quit()
+
+    def do_decompress(self, output, progress_bar):
+        try:
+            compression.decompress(self.compressed_image_entry.get(), self.network_entry2.get(), output)
+        except Exception:
+            raise
+        finally:
+            progress_bar.quit()
+
+
+class ProgressBar(ttk.Progressbar):
+    def __init__(self, parent):
+        ttk.Progressbar.__init__(self, parent, orient='horizontal', mode='indeterminate')
+        self.grid(column=0, row=11, columnspan=3, sticky='EW')
+
+    def loop(self):
+        self.start(30)
+        self.mainloop()
+
+    def quit(self):
+        ttk.Progressbar.quit(self)
+        self.destroy()
