@@ -1,4 +1,3 @@
-import threading
 from Tkinter import *
 import tkMessageBox
 import tkFileDialog
@@ -73,7 +72,7 @@ class Application(Tk):
         compress_button = Button(self.compress_page, text='Run',
                                  command=lambda: Application.run_button_clicked('.zdp', [('Compressed image', '.zdp')], self.compress_page,
                                                                                 self.do_compress))
-        compress_button.grid(column=2, row=7, sticky='sw')
+        compress_button.grid(column=2, row=9, sticky='sw')
 
         label = Label(self.compress_page, text='Image', anchor='w')
         label.grid(column=0, row=0, columnspan=2, sticky='ew')
@@ -105,7 +104,7 @@ class Application(Tk):
         compress_button = Button(self.decompress_page, text='Run',
                                  command=lambda: Application.run_button_clicked('.bmp', [('Bitmap', '.bmp')], self.decompress_page,
                                                                                 self.do_decompress))
-        compress_button.grid(column=2, row=7)
+        compress_button.grid(column=2, row=9)
 
         label = Label(self.decompress_page, text='Compressed image', anchor='w')
         label.grid(column=0, row=0, columnspan=2, sticky='ew')
@@ -127,18 +126,25 @@ class Application(Tk):
     @staticmethod
     def run_button_clicked(defaultextension, filetypes, parent, action):
         """Open dialog window so that user can choose output file.
-           Show message if any error occur.
+           Call action and show error message if any was occurred.
         """
-        try:
-            output = tkFileDialog.asksaveasfilename(defaultextension=defaultextension, filetypes=filetypes)
-            if output != '':
-                Application.do_time_consuming_action(action, output, ProgressBar(parent))
-        except ValueError:
-            tkMessageBox.showerror(message='Improper input values')
-        except neural_network.NeuralNetworkException as exc:
-            tkMessageBox.showerror(message='Cannot load neural network: ' + exc.message)
-        except IOError as exc:
-            tkMessageBox.showerror(message='Cannot load neural network: ' + exc.strerror)
+        output = tkFileDialog.asksaveasfilename(defaultextension=defaultextension, filetypes=filetypes)
+        if output != '':
+            label = Label(parent, text='In progress...', anchor='w')
+            label.grid(column=0, row=9, columnspan=2, sticky='ew')
+            label.update()
+            try:
+                action(output)
+            except ValueError:
+                tkMessageBox.showerror(message='Improper input values')
+            except neural_network.NeuralNetworkException as exc:
+                tkMessageBox.showerror(message='Cannot load neural network: ' + exc.message)
+            except compression.ZdpException as exc:
+                tkMessageBox.showerror(message=exc.message)
+            except IOError as exc:
+                tkMessageBox.showerror(message='Cannot load neural network: ' + exc.strerror)
+            finally:
+                label.destroy()
 
     @staticmethod
     def open_button_clicked(entry, filetypes=[]):
@@ -147,49 +153,12 @@ class Application(Tk):
         entry.delete(0, END)
         entry.insert(0, filename)
 
-    @staticmethod
-    def do_time_consuming_action(target, output, progress_bar):
-        """Starts new thread in which target is performed. Draws progress_bar until target is being performed."""
-        thread = threading.Thread(target=target, args=(output, progress_bar,))
-        thread.start()
-        progress_bar.loop()
-        thread.join()
+    def do_teach(self, output):
+        compression.teach(output, self.training_image_entry.get(), int(self.repetitions_entry.get()), float(self.rate_entry.get()),
+                          int(self.layer_size_entry.get()))
 
-    def do_teach(self, output, progress_bar):
-        try:
-            compression.teach(output, self.training_image_entry.get(), int(self.repetitions_entry.get()), float(self.rate_entry.get()),
-                              int(self.layer_size_entry.get()))
-        except Exception:
-            raise
-        finally:
-            progress_bar.quit()
+    def do_compress(self, output):
+        compression.compress(self.image_entry.get(), self.network_entry.get(), output, int(self.bits_entry.get()))
 
-    def do_compress(self, output, progress_bar):
-        try:
-            compression.compress(self.image_entry.get(), self.network_entry.get(), output, int(self.bits_entry.get()))
-        except Exception:
-            raise
-        finally:
-            progress_bar.quit()
-
-    def do_decompress(self, output, progress_bar):
-        try:
-            compression.decompress(self.compressed_image_entry.get(), self.network_entry2.get(), output)
-        except Exception:
-            raise
-        finally:
-            progress_bar.quit()
-
-
-class ProgressBar(ttk.Progressbar):
-    def __init__(self, parent):
-        ttk.Progressbar.__init__(self, parent, orient='horizontal', mode='indeterminate')
-        self.grid(column=0, row=11, columnspan=3, sticky='EW')
-
-    def loop(self):
-        self.start(30)
-        self.mainloop()
-
-    def quit(self):
-        ttk.Progressbar.quit(self)
-        self.destroy()
+    def do_decompress(self, output):
+        compression.decompress(self.compressed_image_entry.get(), self.network_entry2.get(), output)
