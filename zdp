@@ -21,8 +21,12 @@ def do_gui(args):
 
 def do_teach(args):
     logger = logging.getLogger('logger')
-    logger.info('Running program in teaching mode')
-    compression.teach(args.output + '.mkm', args.teach, args.repeat, args.rate)
+    try:
+        logger.info('Running program in teaching mode')
+        compression.teach(args.output + '.mkm', args.teach, args.repeat, args.rate, args.size)
+    except compression.ZdpException as exc:
+        logger.critical(exc.message)
+        exit(2)
 
 
 def do_compress(args):
@@ -36,6 +40,9 @@ def do_compress(args):
     except IOError as exc:
         logger.critical('Cannot load neural network: ' + exc.strerror)
         exit(exc.errno)
+    except compression.ZdpException as exc:
+        logger.critical(exc.message)
+        exit(2)
 
 
 def do_decompress(args):
@@ -49,6 +56,9 @@ def do_decompress(args):
     except IOError as exc:
         logger.critical('Cannot load neural network: ' + exc.strerror)
         exit(exc.errno)
+    except compression.ZdpException as exc:
+        logger.critical(exc.message)
+        exit(2)
 
 
 def parse_arguments():
@@ -68,6 +78,8 @@ def parse_arguments():
                               help='indicates how many steps has to be taken during teaching algorithms (default 30000)')
     parser_teach.add_argument('--rate', type=float, metavar='<0,1>', default=0.5,
                               help='indicates learning rate, speed of teaching algorithm (default 0.5)')
+    parser_teach.add_argument('--size', type=int, metavar='NUMBER', default=32,
+                              help='indicates number of hidden layer neurons, must be multiple of 8 (default 32)')
     parser_teach.set_defaults(command='teach')
 
     # create the parser for the 'compress' command
