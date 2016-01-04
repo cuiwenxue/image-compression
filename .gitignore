@@ -7,6 +7,9 @@
 # Compressed image
 *.zdp
 
+# Test images
+*.bmp
+
 # Temporary files
 *~
 
