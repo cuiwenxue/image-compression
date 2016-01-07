@@ -138,15 +138,17 @@ def decompress(compressed_image_path, neural_network_path, target_image_path):
     logger.info('Decompressed image saved to ' + target_image_path)
 
 
+
 def get_sequence_squares(img):
     """Get all consecutive squares from the picture.
        Pixel colour is converted to <0;1> value.
     """
     x, y = img.size
+    imgsstep=8
 
     squares = []
-    for i in xrange(0, x, 8):
-        for j in xrange(0, y, 8):
+    for i in xrange(0, x, imgsstep):
+        for j in xrange(0, y, imgsstep):
             squares.append(get_square(img, i, j))
     return squares
 
@@ -160,10 +162,14 @@ def get_square(img, x, y):
     rgb_square = ([], [], [])
     for i in range(8):
         for j in range(8):
-            r, g, b = img_rgb.getpixel((x + j, y + i))
+            try:
+                r, g, b = img_rgb.getpixel((x + j, y + i))
+            except:
+                """r=g=b=0"""
             rgb_square[0].append(r / 255.0)
             rgb_square[1].append(g / 255.0)
             rgb_square[2].append(b / 255.0)
+
 
     return rgb_square
 
@@ -196,19 +202,58 @@ def print_picture(img, squares, filename):
        Saves under filename.
     """
     x, y = img.size
-
+    imgsstep=8
     idx = 0
-    for i in xrange(0, x, 8):
-        for j in xrange(0, y, 8):
+    for i in xrange(0, x, imgsstep):
+        for j in xrange(0, y, imgsstep):
+            #if (i==0 or j==0):
             put_square(img, i, j, (squares[0][idx], squares[1][idx], squares[2][idx]))
+            #else:
+            #    put_square_compare(img, i, j, (squares[0][idx], squares[1][idx], squares[2][idx]),imgsstep)
             idx += 1
+    improve_image(img,squares)
     img.save(filename, 'BMP')
-
 
 def put_square(img, x, y, real_values):
     """Generate 8x8 square into given pos image from list of 64 real_values containing numbers 0.0-1.0"""
     idx = 0
     for a in range(8):
         for b in range(8):
-            img.putpixel((x + b, y + a), (int(real_values[0][idx] * 255), int(real_values[1][idx] * 255), int(real_values[2][idx] * 255)))
+            try:
+                img.putpixel((x + b, y + a), (int(real_values[0][idx] * 255), int(real_values[1][idx] * 255), int(real_values[2][idx] * 255)))
+            except:
+               """store previous values"""
             idx += 1
+
+def improve_image(img,squares):
+    x, y = img.size
+    idx = 0
+    for i in xrange(4, x+4, 8):
+        for j in xrange(4, y+4, 8):
+            put_square_compare(img, i, j, (squares[0][idx], squares[1][idx], squares[2][idx]))
+            idx += 1
+
+def put_square_compare(img, x, y, real_values):
+    """Compare square on given pos of image with a list of 64 real_values containing numbers 0.0-1.0, and calculate avg"""
+    idx = 0
+    for a in range(8):
+        for b in range(8):
+                try:
+                    #print(y+a,b)
+                    r,g,b=img.getpixel((x + b,y + a))
+                    #print(r,g,b)
+                    w1=(abs(a-3)+abs(b-3))/8
+                    w2=1-w1
+                    r=int((real_values[0][idx] * 255+r)/2)#*w2+r*w1)
+                    if r>255:
+                        r=255
+                    g=int((real_values[1][idx] * 255+g)/2)#*w2+g*w1)
+                    if g>255:
+                        g=255
+                    b=int((real_values[2][idx] * 255+b)/2)#*w2+b*w1)
+                    if b>255:
+                        b=255
+                    img.putpixel((x + b, y + a),(r,g,b))
+                except IndexError:
+                     """print(y+a,x+b)"""
+        idx += 1
