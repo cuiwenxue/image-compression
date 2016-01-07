@@ -46,6 +46,7 @@ def compress(image_path, neural_network_path, compressed_image_path, bits):
 
     img = Image.open(image_path)
     rgb_squares = get_sequence_squares(img)
+    rgb_squares2= get_sequence_squares2(img)
     size = bits * len(network.hidden_layers[0]) / 8
 
     # open file and write data necessary to decompress
@@ -57,7 +58,32 @@ def compress(image_path, neural_network_path, compressed_image_path, bits):
     file.write(struct.pack('>b', len(network.hidden_layers[0])))
 
     for i, rgb_square in enumerate(rgb_squares):
-        logger.info('Compressing in progress... %d%%\033[F' % (100 * (i + 1) / len(rgb_squares)))
+        logger.info('Compressing in progress... %d%%\033[F' % (50 * (i + 1) / len(rgb_squares)))
+        for sq in rgb_square:
+            network.run(sq)
+            # get hidden neuron's values
+            hidden_values = [neuron.value for neuron in network.hidden_layers[0]]
+            quant_values = quantify(hidden_values, bits)
+
+            # place quantified values in byte array and write to file
+            bin_square = bytearray([0] * size)
+            B = 0
+            pos = 0
+            for val in quant_values:
+                bin_square[B] |= val << pos & 255
+                pos += bits
+                if pos == 8:
+                    B += 1
+                    pos = 0
+                elif pos > 8:
+                    B += 1
+                    pos %= 8
+                    bin_square[B] |= val >> (bits - pos)
+            file.write(bin_square)
+
+
+    for i, rgb_square in enumerate(rgb_squares2):
+        logger.info('Compressing in progress... %d%%\033[F' % (50+(50 * (i + 1) / len(rgb_squares2))))
         for sq in rgb_square:
             network.run(sq)
             # get hidden neuron's values
@@ -133,7 +159,37 @@ def decompress(compressed_image_path, neural_network_path, target_image_path):
             output_values = [neuron.value for neuron in network.output_layer]
             squares[i].append(output_values)
 
-    print_picture(Image.new('RGB', (x, y)), squares, target_image_path)
+    squares2 = ([], [], [])
+    for i in xrange(number_of_rgb_squares):
+        rgb_square = ([], [], [])
+
+        # read 3 squares for each RGB colour
+        for sq in rgb_square:
+            B = 0
+            pos = 0
+            bin_square = bytearray(file.read(size))
+            for j in xrange(hidden_layer_length):
+                val = (bin_square[B] & (mask << pos & 255)) >> pos
+                pos += bits
+                if pos == 8:
+                    B += 1
+                    pos = 0
+                elif pos > 8:
+                    B += 1
+                    pos %= 8
+                    mask2 = pow(2, pos) - 1
+                    val += (bin_square[B] & mask2) << (bits - pos)
+                sq.append(val)
+
+        # dequantify read squares, decompress and place in squares
+        for i, sq in enumerate(rgb_square):
+            sq = dequantify(sq, bits)
+            for j, val in enumerate(sq):
+                network.hidden_layers[0][j].value = val
+            network.output_layer.update_values()
+            output_values = [neuron.value for neuron in network.output_layer]
+            squares2[i].append(output_values)
+    print_picture(Image.new('RGB', (x, y)), squares, squares2, target_image_path)
     logger.info('Decompressing completed     ')
     logger.info('Decompressed image saved to ' + target_image_path)
 
@@ -152,19 +208,32 @@ def get_sequence_squares(img):
             squares.append(get_square(img, i, j))
     return squares
 
+def get_sequence_squares2(img):
+    """Get all consecutive squares from the picture.
+       Pixel colour is converted to <0;1> value.
+    """
+    x, y = img.size
+    imgsstep=8
+
+    squares = []
+    for i in xrange(4, x+4, imgsstep):
+        for j in xrange(4, y+4, imgsstep):
+            squares.append(get_square(img, i, j))
+    return squares
+
 
 def get_square(img, x, y):
     """Get tuple of 8x8 squares for each RGB colour
        from the fixed position of the picture
     """
     img_rgb = img.convert('RGB')
-
+    r=g=b=0
     rgb_square = ([], [], [])
     for i in range(8):
         for j in range(8):
             try:
                 r, g, b = img_rgb.getpixel((x + j, y + i))
-            except:
+            except IndexError:
                 """r=g=b=0"""
             rgb_square[0].append(r / 255.0)
             rgb_square[1].append(g / 255.0)
@@ -197,7 +266,7 @@ def dequantify(values, bits):
     return dequant
 
 
-def print_picture(img, squares, filename):
+def print_picture(img, squares, squares2, filename):
     """Print squares sequence into img
        Saves under filename.
     """
@@ -211,7 +280,7 @@ def print_picture(img, squares, filename):
             #else:
             #    put_square_compare(img, i, j, (squares[0][idx], squares[1][idx], squares[2][idx]),imgsstep)
             idx += 1
-    improve_image(img,squares)
+    improve_image(img,squares2)
     img.save(filename, 'BMP')
 
 def put_square(img, x, y, real_values):
@@ -221,7 +290,7 @@ def put_square(img, x, y, real_values):
         for b in range(8):
             try:
                 img.putpixel((x + b, y + a), (int(real_values[0][idx] * 255), int(real_values[1][idx] * 255), int(real_values[2][idx] * 255)))
-            except:
+            except IndexError:
                """store previous values"""
             idx += 1
 
@@ -238,22 +307,25 @@ def put_square_compare(img, x, y, real_values):
     idx = 0
     for a in range(8):
         for b in range(8):
-                try:
-                    #print(y+a,b)
-                    r,g,b=img.getpixel((x + b,y + a))
-                    #print(r,g,b)
-                    w1=(abs(a-3)+abs(b-3))/8
-                    w2=1-w1
-                    r=int((real_values[0][idx] * 255+r)/2)#*w2+r*w1)
-                    if r>255:
-                        r=255
-                    g=int((real_values[1][idx] * 255+g)/2)#*w2+g*w1)
-                    if g>255:
-                        g=255
-                    b=int((real_values[2][idx] * 255+b)/2)#*w2+b*w1)
-                    if b>255:
-                        b=255
-                    img.putpixel((x + b, y + a),(r,g,b))
-                except IndexError:
-                     """print(y+a,x+b)"""
-        idx += 1
+            try:
+                #print(y+a,b)
+                r, g, B = img.getpixel((x + b, y + a))
+                #print(r,g,b)
+                w1=(abs(a-3)+abs(b-3))/8.0
+                w2=1-w1
+                #print(w1,w2,r)
+                r=int((real_values[0][idx]* 255*w2+r*w1))#*w2+r*w1)
+                if r>255:
+                    r=255
+                g=int((real_values[1][idx]* 255*w2+g*w1))#*w2+g*w1)
+                if g>255:
+                    g=255
+                B=int((real_values[2][idx]* 255*w2+B*w1))#*w2+b*w1)
+                if B>255:
+                    B=255
+                #print((x+b, y+a), img.getpixel((x + b,y + a)), (r,g,b), idx%8, idx/8, x, y, a, b)
+                img.putpixel((x + b, y + a),(r,g,B))
+                #print((x+b, y+a), x, y, b, a)
+            except IndexError:
+                """print(y+a,x+b)"""
+            idx += 1
