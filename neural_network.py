@@ -6,7 +6,6 @@ import math
 import random
 import pickle
 import sys
-import compression
 
 
 def sigmoid_function(x):
@@ -71,7 +70,6 @@ class NeuralNetwork(object):
 
         for hidden_layer in self.hidden_layers:
             hidden_layer.update_values()
-        """hidden_layer.neurons=compression.quantify(hidden_layer)"""
         self.output_layer.update_values()
 
         return [neuron.value for neuron in self.output_layer]
