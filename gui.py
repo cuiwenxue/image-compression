@@ -97,6 +97,10 @@ class Application(Tk):
         self.bits_entry.insert(0, '4')
         self.bits_entry.grid(column=0, row=5, sticky='EW')
 
+        self.smoothing = BooleanVar()
+        self.smoothing_entry = Checkbutton(self.compress_page, text='Smoothing', variable=self.smoothing, onvalue=True, offvalue=False)
+        self.smoothing_entry.grid(column=0, row=7, sticky='W')
+
     def _init_decompress_page(self):
         """Initialize entries and buttons in 'Decompress' tab.
            Assign actions to buttons and set default values.
@@ -158,7 +162,7 @@ class Application(Tk):
                           int(self.layer_size_entry.get()))
 
     def do_compress(self, output):
-        compression.compress(self.image_entry.get(), self.network_entry.get(), output, int(self.bits_entry.get()))
+        compression.compress(self.image_entry.get(), self.network_entry.get(), output, int(self.bits_entry.get()), self.smoothing.get())
 
     def do_decompress(self, output):
         compression.decompress(self.compressed_image_entry.get(), self.network_entry2.get(), output)
