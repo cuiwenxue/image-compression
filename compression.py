@@ -39,7 +39,7 @@ def teach(neural_network_path, learning_image, repeat, learning_rate, hidden_lay
     logger.info('Neural network saved to ' + neural_network_path)
 
 
-def compress(image_path, neural_network_path, compressed_image_path, bits, smoothing=True):
+def compress(image_path, neural_network_path, compressed_image_path, bits, smoothing=False):
     if not 1 <= bits <= 8:
         raise ZdpException('Number of bits must be <1;8>')
     network = neural_network.load(neural_network_path)
